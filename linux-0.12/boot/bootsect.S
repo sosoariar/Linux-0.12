@@ -2,7 +2,12 @@
 ; 该文件代码的可执行二进制文件,驻留在磁盘的第一扇区,即引导扇区
 ; 该程序是如何写入第一扇区呢? 类似U盘装机的时候,需要在U盘写入Boot
 ; BIOS 把第一扇区MBR的bootsect可执行代码, 加载到0x7C00内存处, BIOS 会把CS:IP也指向该位置,并开始执行bootsect代码逻辑
-;
+; 将bootsect 的可执行代码移动到 0x90000处
+; bootsect的功能: 从磁盘将2~5扇区的 setup可执行代码(由setup.s编译而成, 一共4个扇区)
+; 利用BIOS中断0x13,显示 Loading System 字样
+; 读取磁盘 setup 模块后面的 system模块加载到内存 0x10000 开始的地方
+; 确定根文件系统设备号,若没有指定,则根据所保存的引导盘的每磁道扇区数 判别出盘的类型和种类(是 1.44M A盘吗？) 并保存设备号于 root_dev 处
+; 最后长跳转到setup开始处(0x90200)去执行 setup 程序
 ; SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 ; 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 ; versions of linux
