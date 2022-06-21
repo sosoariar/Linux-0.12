@@ -1,6 +1,8 @@
 ;;;; 磁盘引导块程序 ;;;;
 ; 该文件代码的可执行二进制文件,驻留在磁盘的第一扇区,即引导扇区
 ; 该程序是如何写入第一扇区呢? 类似U盘装机的时候,需要在U盘写入Boot
+; BIOS 把第一扇区MBR的bootsect可执行代码, 加载到0x7C00内存处, BIOS 会把CS:IP也指向该位置,并开始执行bootsect代码逻辑
+;
 ; SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 ; 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 ; versions of linux
@@ -12,24 +14,24 @@
 
 SYSSIZE = DEF_SYSSIZE 	; 系统模块大小为0x3000节
 
-!
-!	bootsect.s (C) 1991 Linus Torvalds
-!	modified by Drew Eckhardt
-!
-! bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
-! iself out of the way to address 0x90000, and jumps there.
-!
-! It then loads 'setup' directly after itself (0x90200), and the system
-! at 0x10000, using BIOS interrupts.
-!
-! NOTE! currently system is at most 8*65536 bytes long. This should be no
-! problem, even in the future. I want to keep it simple. This 512 kB
-! kernel size should be enough, especially as this doesn't contain the
-! buffer cache as in minix
-!
-! The loader has been made as simple as possible, and continuos
-! read errors will result in a unbreakable loop. Reboot by hand. It
-! loads pretty fast by getting whole sectors at a time whenever possible.
+;
+;	bootsect.s (C) 1991 Linus Torvalds
+;	modified by Drew Eckhardt
+;
+; bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
+; iself out of the way to address 0x90000, and jumps there.
+;
+; It then loads 'setup' directly after itself (0x90200), and the system
+; at 0x10000, using BIOS interrupts.
+;
+; NOTE; currently system is at most 8*65536 bytes long. This should be no
+; problem, even in the future. I want to keep it simple. This 512 kB
+; kernel size should be enough, especially as this doesn't contain the
+; buffer cache as in minix
+;
+; The loader has been made as simple as possible, and continuos
+; read errors will result in a unbreakable loop. Reboot by hand. It
+; loads pretty fast by getting whole sectors at a time whenever possible.
 
 ; 以下是前面这些文字的翻译：
 ; 	bootsect.s (C) 1991 Linus Torvalds 版权所有
