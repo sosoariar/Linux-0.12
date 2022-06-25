@@ -61,21 +61,17 @@ start:
     sub	di,di       ; 清零操作si=0x0000, 与di组合成目标地址, 即 es:di = 0x9000:0x0000
     rep             ; rep 重复后面的指令, 即 movw 逐word移动, 该指令包装的移动所需的寄存器即 从 ds 到 es
     movw            ; 此处结束后，代码已经成功移动到0x90000
-    jmpi go,INITSEG ; 段间跳转(Jump Intersegment),跳转到INITSEG:go(段地址:段内偏移)处。
+    jmpi go,INITSEG ; 段间跳转(Jump Intersegment),跳转到INITSEG:go(段地址:段内偏移)处,目的即跳过同一段代码的迁移逻辑,从go标号处开始执行代码
 
-;;;;; 从go处开始，CPU在已移动到0x90000处继续执行 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-; 以下几行代码设置了几个段寄存器，包括栈寄存器ss和sp。
-go:	mov	ax,cs
-    mov	dx,#0xfef4	! arbitrary value >>512 - disk parm size
-                    ; 栈指针要远大于512字节偏移(即0x90200)处都可以；一般setup程序大概占用4个
-                    ; 扇区，所以sp要大于(0x90200+0x200*4+堆栈大小)。
-                    ; 这里sp被设置成了0x9ff00-12(参数表长度)，即sp = 0xfef4。
+;;;; operator-02 0x9000 处开始执行的第一句代码,上述的 jmpi 指令会将CPU的CS:IP指向此处
+go:	mov	ax,cs       ; 将段寄存器 DS ES SS 设置为 0x9000
+    mov	dx,#0xfef4	; 栈指针从上往下,堆从下往上,堆从0开始,栈从尽可能大的位置往下,根据当时物理容量实际情况,选择从:0x9fef4为栈指针
+                    ; sp:dx被设置成了0xff00-12(参数表长度)，即sp = 0xfef4。
     mov	ds,ax
     mov	es,ax
     ;push   ax		; 临时保存段值(0x9000)，供后面使用。
 
-    mov	ss,ax		! put stack at 0x9ff00 - 12.
+    mov	ss,ax		; put stack at 0x9ff00 - 12.
     mov	sp,dx
 /*
  *	Many BIOS's default disk parameter tables will not
