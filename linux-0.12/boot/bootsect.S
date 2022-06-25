@@ -65,13 +65,12 @@ start:
 
 ;;;; operator-02 0x9000 处开始执行的第一句代码,上述的 jmpi 指令会将CPU的CS:IP指向此处
 go:	mov	ax,cs       ; 将段寄存器 DS ES SS 设置为 0x9000
-    mov	dx,#0xfef4	; 栈指针从上往下,堆从下往上,堆从0开始,栈从尽可能大的位置往下,根据当时物理容量实际情况,选择从:0x9fef4为栈指针
-                    ; sp:dx被设置成了0xff00-12(参数表长度)，即sp = 0xfef4。
+    mov	dx,#0xfef4	; 栈指针从上往下,堆从下往上,堆从0开始,栈从尽可能大的位置往下,根据当时物理容量实际情况,选择从:0x9fef4为栈指针,sp:dx被设置成了0xff00-12(参数表长度)，即sp = 0xfef4。
     mov	ds,ax
     mov	es,ax
     ;push   ax		; 临时保存段值(0x9000)，供后面使用。
-
-    mov	ss,ax		; put stack at 0x9ff00 - 12.
+    ;; 初始化栈指针
+    mov	ss,ax
     mov	sp,dx
 /*
  *	Many BIOS's default disk parameter tables will not
