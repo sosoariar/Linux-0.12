@@ -8,50 +8,17 @@
 ; 读取磁盘 setup 模块后面的 system模块加载到内存 0x10000 开始的地方
 ; 确定根文件系统设备号,若没有指定,则根据所保存的引导盘的每磁道扇区数 判别出盘的类型和种类(是 1.44M A盘吗？) 并保存设备号于 root_dev 处
 ; 最后长跳转到setup开始处(0x90200)去执行 setup 程序
-; SYS_SIZE is the number of clicks (16 bytes) to be loaded.
-; 0x3000 is 0x30000 bytes = 196kB, more than enough for current
-; versions of linux
-; SYS_SIZE是要加载的系统模块长度的节数（每节有16b）。0x3000节就等
 ; 于0x30000bytes=192KB，对于当前的版本空间已足够了。
-
 ; 该头文件里定义了内核用到的一些常数符号和Linus自己使用的默认硬盘默认参数块。
+
 #include <linux/config.h>
 
 SYSSIZE = DEF_SYSSIZE 	; 系统模块大小为0x3000节
 
-;
-;	bootsect.s (C) 1991 Linus Torvalds
-;	modified by Drew Eckhardt
-;
-; bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
-; iself out of the way to address 0x90000, and jumps there.
-;
-; It then loads 'setup' directly after itself (0x90200), and the system
-; at 0x10000, using BIOS interrupts.
-;
-; NOTE; currently system is at most 8*65536 bytes long. This should be no
-; problem, even in the future. I want to keep it simple. This 512 kB
-; kernel size should be enough, especially as this doesn't contain the
-; buffer cache as in minix
-;
-; The loader has been made as simple as possible, and continuos
-; read errors will result in a unbreakable loop. Reboot by hand. It
-; loads pretty fast by getting whole sectors at a time whenever possible.
-
-; 以下是前面这些文字的翻译：
-; 	bootsect.s (C) 1991 Linus Torvalds 版权所有
-;	Drew Eckhardt 修改
-;
-; bootsect.s被BIOS启动子程序加载至0x7c00处，并将自己移到了地址0x90000处，并跳转至那里。
-;
-; 它然后使用BIOS中断将setup直接加载到自己的后面(0x90200)，并将system加载到地址0x10000处。
-;
-;
-; 注意! 目前的内核系统最大长度限制为512KB字节，即使是在将来这也应该没有问题的。我想让它保持简
-; 单明了。这样512KB的最大内核长度应该足够了，尤其是这里没有像MINIX中一样包含缓冲区。
-;
-; 加载程序已经做得够简单了，而且持续的读操作出错将导致死循环。就只能手工重启。
-; 只要能够一次读取所有的扇区，加载过程可以做的很快的。
+; .globl 使得连接程序（ld）能够看到symbl。如果你的局部程序中定义了symbl，那么，与这个局部程序连接的其他局部程序也能存取symbl
+; .text  包含程序的代码,它是只读节
+; .data  已初始化的数据,包含具有初值的那些变量 读／写节
+; .bss 这个节包含程序还未初始化的数据，也就是说，包含没有初值的那些变量。当操作系统装入这个程序时将把这些变量都置为0 读／写节
 
 .globl begtext, begdata, begbss, endtext, enddata, endbss
 .text
