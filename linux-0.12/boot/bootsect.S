@@ -155,20 +155,20 @@ load_setup:
 
 ok_load_setup:
 
-; Get disk drive parameters, specifically nr of sectors/track
-; 这段代码取磁盘驱动器的参数，特别是每道的扇区数量，并保存在位置sectors处。
+; 取磁盘驱动器的参数,扇区数量/每磁道, save to [sectors];
+; ES:DI 软驱磁盘参数表
     xor	dl,dl
-    mov	ah,#0x08        ; AH=8 is get drive parameters
+    mov	ah,#0x08
     int	0x13
     xor	ch,ch
     seg cs
     mov	sectors,cx      ; 保存每磁道扇区数。
     mov	ax,#INITSEG
-    mov	es,ax           ; 上面取磁盘参数中断改了es的值，这里需要改回来
+    mov	es,ax           ; 恢复ES = 0x9000
 
-; Print some inane message
-; 在显示一些信息('Loading\r\n'，共9个字符)。
-    mov	ah,#0x03        ; read cursor pos
+;;;; operator-04 利用 int 0x10 显示 'Loading\r\n' ;;;;
+; 寄存器的赋值是显示程序的参数
+    mov	ah,#0x03
     xor	bh,bh
     int	0x10
 
