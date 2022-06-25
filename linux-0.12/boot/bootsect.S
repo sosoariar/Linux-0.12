@@ -38,22 +38,30 @@ SETUPSEG = DEF_SETUPSEG			; setup.s    的可执行二进制代码被加载到�
 SYSSEG   = DEF_SYSSEG			; system.s   的可执行二进制代码被加载到【内存】实物理地址 0x10000
 ENDSEG   = SYSSEG + SYSSIZE		; 为了保护实际物理内存中的其他内容不被改写, 定义了物理内存的边界, 停止加载的段地址
 
-ROOT_DEV = 0            ; 还没遇到变量的使用场景,含义待定
-SWAP_DEV = 0            ; 还没遇到变量的使用场景,含义待定
+; 还没遇到变量的使用场景,含义待定
+; ROOT_DEV 根文件系统设备号, 根文件系统是个逻辑上的抽象,代表这块存储是核心的内容
+; BIOS 在初始化后扫描硬件后, 后续的程序就可以通过设备号来定位物理设备,即设备有了自己的ID
+ROOT_DEV = 0
 
-entry start 	; 告知链接程序，程序从start标号处开始执行
+; 还没遇到变量的使用场景,含义待定
+; 用作内存换出的设备
+SWAP_DEV = 0
+
+; 伪指令 entry 用于指定汇编程序的入口点
+; 告知链接程序, 程序从start标号处开始执行
+entry start
 start:
-;;;;; 1. 将自身(bootsect)从0x7c00移动到0x90000处，共256字(512字节) ;;;;;;;;;;;;;;;;;;
+;;;; operator-01 将【实地址0x7c00】256字(512B)移动到【实地址0x90000】处 ;;;;
     mov	ax,#BOOTSEG
     mov	ds,ax
     mov	ax,#INITSEG
     mov	es,ax
-    mov	cx,#256
-    sub	si,si       ; 源地址 ds:si = 0x07c0:0x0000
-    sub	di,di       ; 目标地址 es:di = 0x9000:0x0000
-    rep
+    mov	cx,#256     ; 设置计数器 = 256
+    sub	si,si       ; 清零操作si=0x0000, 与ds组合成源地址, 即 ds:si = 0x07c0:0x0000
+    sub	di,di       ; 清零操作si=0x0000, 与di组合成目标地址, 即 es:di = 0x9000:0x0000
+    rep             ; rep 重复后面的指令, 即 movw 逐word移动, 该指令包装的移动所需的寄存器即 从 ds 到 es
     movw            ; 此处结束后，代码已经成功移动到0x90000
-    jmpi go,INITSEG ; 段间跳转(Jump Intersegment)，跳转到INITSEG:go(段地址:段内偏移)处。
+    jmpi go,INITSEG ; 段间跳转(Jump Intersegment),跳转到INITSEG:go(段地址:段内偏移)处。
 
 ;;;;; 从go处开始，CPU在已移动到0x90000处继续执行 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
