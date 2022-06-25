@@ -168,6 +168,7 @@ ok_load_setup:
 
 ;;;; operator-04 利用 int 0x10 显示 'Loading\r\n' ;;;;
 ; 寄存器的赋值是显示程序的参数
+; 信息提示后,也说明 setup.bin 加载成功
     mov	ah,#0x03
     xor	bh,bh
     int	0x10
@@ -177,27 +178,16 @@ ok_load_setup:
     mov	bp,#msg1
     mov	ax,#0x1301
     int	0x10
-; ok, we've written the message, now
+;;;; operator-05 将 system.bin 加载到0x10000(64K)处 ;;;;
+    mov	 ax,#SYSSEG
+    mov	 es,ax			; segment of 0x010000
+    call read_it 	    ; 读磁盘上system模块
+    call kill_motor 	; 关闭驱动器马达
+    call print_nl
 
-; we want to load the system (at 0x10000)
-;;;;; 3. 将system模块加载到0x10000(64K)处 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    mov	ax,#SYSSEG
-    mov	es,ax			; segment of 0x010000
-    call	read_it 	; 读磁盘上system模块
-    call	kill_motor 	; 关闭驱动器马达
-    call	print_nl
-
-; After that we check which root-device to use. If the device is
-; defined (!= 0), nothing is done and the given device is used.
-; Otherwise, either /dev/PS0 (2,28) or /dev/at0 (2,8), depending
-; on the number of sectors that the BIOS reports currently.
-; 此后，我们检查要使用哪个根文件系统设备。如果已经指定了设备(!=0)就直接使用给定
-; 的设备。否则就需要根据BIOS报告的每磁道扇区数来确定到底使用/dev/PS0(2,28)
-; 还是/dev/at0(2,8)。
-; 在Linux中，软驱的主设备号是2，次设备号 = type << 2 + nr，
-;       type    软驱的类型（2->1.2M或7->1.44M等）。
-;       nr      0-3分别对应软驱A、B、C或D；
-
+;;;; operator-06 检查要使用哪个 root file
+; root file 的作用是什么?
+; 编译内核时,可以在 Makefile 文件中了另行指定 root file, 内核映像文件 Image 的创建程序 tools/build 会使用指定的值设置根文件系统所在的设备号
     seg cs
     mov	ax,root_dev
     or	ax,ax
@@ -216,19 +206,11 @@ root_defined:
     seg cs
     mov	root_dev,ax
 
-; after that (everyting loaded), we jump to
-; the setup-routine loaded directly after
-; the bootblock:
-
-;;;;; 4. 到此，所有程序都加载完毕，我们就跳转到setup程序去 ;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; 跳转到 setup.bin 程序执行 0x9020:0000 ;;;;
     jmpi	0,SETUPSEG
 
 ;;;;; bootsect.S程序到此就结束了 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; 下面是几个子程序:
-; read_it 用于读取磁盘上的system模块
-; kill_motor 用于关闭软驱电动机
-; 还有一些屏幕显示子程序
 
 ; This routine loads the system at address 0x10000, making sure
 ; no 64kB boundaries are crossed. We try to load it as fast as
@@ -426,7 +408,7 @@ sectors:
 
 msg1:
     .byte 13,10
-    .ascii "Loading"
+    .ascii "Loading System"
 
 .org 506
 ; swap_dev在第506开始的2个字节中，root_dev在第508开始的2个字节中
