@@ -72,9 +72,10 @@ go:	mov	ax,cs       ; 将段寄存器 DS ES SS 设置为 0x9000
     ;; 初始化栈指针
     mov	ss,ax
     mov	sp,dx
+
 /*
- *	Many BIOS's default disk parameter tables will not
- *	recognize multi-sector reads beyond the maximum sector number
+ *  BIOS在校验硬件时, 可以得到有多少扇区可以操作;
+ *	Many BIOS's default disk parameter tables will not recognize multi-sector reads beyond the maximum sector number ;
  *	specified in the default diskette parameter tables - this may
  *	mean 7 sectors in some cases.
  *
@@ -84,21 +85,6 @@ go:	mov	ax,cs       ; 将段寄存器 DS ES SS 设置为 0x9000
  *	count to 18 - the most we will encounter on an HD 1.44.
  *
  *	High doesn't hurt.  Low does.
- *
- *	Segments are as follows: ds=es=ss=cs - INITSEG,
- *		fs = 0, gs = parameter table segment
- */
-/*
- * 对于多扇区读操作所读的扇区数超过默认磁盘参数表中指定的最大扇区数时，很多BIOS
- * 将不能进行正确识别。在某些情况下是7个扇区。
- *
- * 由于单扇区读操作太慢，不予考虑。我们必须通过在内存中重新创建新的参数表(为第1个驱动器)
- * 来解决这个问题。我们将把其中最大扇区数设置为18，即在1.44MB磁盘上会碰到的最大值。
- *
- * 数值大不会出问题，但太小就不行了。
- *
- * 段寄存器将被设置成：ds = es = ss = cs 都为INITSEG(0x9000),
- * fs = 0, gs = 参数表所在段值。
  */
 
 ;;;;; 修改软驱参数表 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
