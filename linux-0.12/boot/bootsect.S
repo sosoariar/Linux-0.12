@@ -209,7 +209,7 @@ root_defined:
 ;;;; 跳转到 setup.bin 程序执行 0x9020:0000 ;;;;
     jmpi	0,SETUPSEG
 
-;;;; operator-06 bootsect.S程序到此就结束了 ;;;;
+;;;; operator-07 bootsect.S程序到此就结束了 ;;;;
 
 
 sread:	.word 1+SETUPLEN	; sectors read of current track
