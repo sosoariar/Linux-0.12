@@ -185,7 +185,7 @@ ok_load_setup:
     call kill_motor 	; 关闭驱动器马达
     call print_nl
 
-;;;; operator-06 检查要使用哪个 root file
+;;;; operator-06 检查要使用哪个 root file ;;;;
 ; root file 的作用是什么?
 ; 编译内核时,可以在 Makefile 文件中了另行指定 root file, 内核映像文件 Image 的创建程序 tools/build 会使用指定的值设置根文件系统所在的设备号
     seg cs
@@ -209,16 +209,9 @@ root_defined:
 ;;;; 跳转到 setup.bin 程序执行 0x9020:0000 ;;;;
     jmpi	0,SETUPSEG
 
-;;;;; bootsect.S程序到此就结束了 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; operator-06 bootsect.S程序到此就结束了 ;;;;
 
 
-; This routine loads the system at address 0x10000, making sure
-; no 64kB boundaries are crossed. We try to load it as fast as
-; possible, loading whole tracks whenever we can.
-;
-; in:	es - starting address segment (normally 0x1000)
-;
-; 该子程序将系统模块system加载到内存地址0x10000处，并确定没有跨越64KB的内存边界。
 sread:	.word 1+SETUPLEN	; sectors read of current track
                             ; 当前磁道的已读扇区数（bootsect + setup）
 head:	.word 0				; current head  ;当前磁头号
@@ -316,19 +309,6 @@ bad_rt:
     popa
     jmp read_track
 
-/*
- *	print_all is for debugging purposes.
- *	It will print out all of the registers.  The assumption is that this is
- *	called from a routine, with a stack frame like
- *	dx
- *	cx
- *	bx
- *	ax
- *	error
- *	ret <- sp
- *
-*/
-; print_all 用于调试目的，前提是从一个子程序中调用。栈帧结构如上所示
 print_all:
     mov	cx, #5          ; error code + 4 registers
     mov	bp, sp          ; 保存当前栈指针sp.
@@ -348,7 +328,7 @@ print_loop:
 
     mov	al, #0x3a       ; :
     int	0x10
-; 显示寄存器bp所指栈中的内容
+
 no_reg:
     add	bp, #2          ; next register
     call	print_hex   ; print it
@@ -356,7 +336,6 @@ no_reg:
     loop	print_loop
     ret
 
-; 显示回车换行
 print_nl:
     mov	ax, #0xe0d      ; CR
     int		0x10
@@ -364,23 +343,17 @@ print_nl:
     int 	0x10
     ret
 
-/*
- *	print_hex is for debugging purposes, and prints the word
- *	pointed to by ss:bp in hexadecmial.
-*/
-/* 子程序print_hex用于调试目的.它使用十六进制在屏幕上显示出ss:bp指向的字 */
 print_hex:
     mov	cx, #4      ; 4 hex digits
     mov	dx, (bp)    ; load word into dx
 
-; 先显示高字节，因此需要把dx中值左旋4位，此时高4位在dx的低4位中
 print_digit:
-    rol	dx, #4      ; rotate so that lowest 4 bits are used ;左旋4位
+    rol	dx, #4
     mov	ah, #0xe
-    mov	al, dl      ; mask off so we have only next nibble
-    and	al, #0xf    ; 只取低四位显示
-    add	al, #0x30   ; convert to 0 based digit, '0'
-    cmp	al, #0x39   ; check for overflow ; 大于9的处理，转换成A-F
+    mov	al, dl
+    and	al, #0xf
+    add	al, #0x30
+    cmp	al, #0x39
     jbe	good_digit
     add	al, #0x41 - 0x30 - 0xa  ; 'A' - '0' - 0xa
 
@@ -389,12 +362,6 @@ good_digit:
     loop	print_digit
     ret
 
-/*
- * This procedure turns off the floppy drive motor, so
- * that we enter the kernel in a known state, and
- * don't have to worry about it later.					'
- */
-; 这个子程序用于关闭软驱的马达，这样我们进入内核后它处于已知状态，以后也就无须担心它了。
 kill_motor:
     push dx
     mov dx,#0x3f2
@@ -411,13 +378,12 @@ msg1:
     .ascii "Loading System"
 
 .org 506
-; swap_dev在第506开始的2个字节中，root_dev在第508开始的2个字节中
+
 swap_dev:
     .word SWAP_DEV
 root_dev:
     .word ROOT_DEV
 
-; 下面2个字节是有效引导扇区的标志（必须位于引导扇区的最后两个字节中）
 boot_flag:
     .word 0xAA55
 
