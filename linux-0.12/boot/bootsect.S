@@ -27,26 +27,19 @@ begtext:
 begdata:
 .bss
 begbss:
+
+;;;; 代码段内容 ;;;;
 .text
 
-SETUPLEN = 4					! nr of setup-sectors
-                                ; setup 占用的磁盘扇区数
-BOOTSEG  = 0x07c0				! original address of boot-sector
-                                ; bootsect 代码所在的原地址（被BIOS子程序加载至此处）
-INITSEG  = DEF_INITSEG			! we move boot here - out of the way
-                                ; bootsect将要移动到的目的段位置，为了避开系统模块占用处
-SETUPSEG = DEF_SETUPSEG			! setup starts here
-                                ; setup程序代码的段位置
-SYSSEG   = DEF_SYSSEG			! system loaded at 0x10000 (65536).
-                                ; system模块将被加载到0x10000
-ENDSEG   = SYSSEG + SYSSIZE		! where to stop loading
-                                ; 停止加载的段地址
+SETUPLEN = 4					; setup.s    的可执行二进制代码在【磁盘】扇占用的区数 4*512B = 2KB
+BOOTSEG  = 0x07c0				; bootsect.s 的可执行二进制代码被加载到【内存】实物理地址 0x7c00
+INITSEG  = DEF_INITSEG			; bootsect.s 的可执行二进制代码在加载到0x7c00后,自身的代码逻辑会再移动一次代码到此处,为了避开系统模块占用处
+SETUPSEG = DEF_SETUPSEG			; setup.s    的可执行二进制代码被加载到【内存】实物理地址 0x9020
+SYSSEG   = DEF_SYSSEG			; system.s   的可执行二进制代码被加载到【内存】实物理地址 0x10000
+ENDSEG   = SYSSEG + SYSSIZE		; 为了保护实际物理内存中的其他内容不被改写, 定义了物理内存的边界, 停止加载的段地址
 
-! ROOT_DEV & SWAP_DEV are now written by "build".
-
-; 根文件系统设备号ROOT_DEV和交换设备号SWAP_DEV现在由tools目录下的build程序写入。
-ROOT_DEV = 0            ;root file 所在的默认块设备号
-SWAP_DEV = 0            ;虚拟存储交换的外部设备号
+ROOT_DEV = 0            ; 还没遇到变量的使用场景,含义待定
+SWAP_DEV = 0            ; 还没遇到变量的使用场景,含义待定
 
 entry start 	; 告知链接程序，程序从start标号处开始执行
 start:
