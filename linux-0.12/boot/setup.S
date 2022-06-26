@@ -1,11 +1,5 @@
 ;	setup.s		(C) 1991 Linus Torvalds
 
-; This code asks the bios for memory/disk/other parameters, and
-; puts them in a "safe" place: 0x90000-0x901FF, ie where the
-; boot-block used to be. It is then up to the protected mode
-; system to read them from there before the area is overwritten
-; for buffer-blocks.
-;
 ; setup.s 主要功能是加载操作系统可执行程序, 利用 BIOS 提供的与硬件交互的能力,即 BIOS 中断, 并将这些数据保存到0x90000开始的位置,覆盖掉 bootsect.bin 程序所在的地方
 ; 将 system.bin 从 0x10000-0x8ffff 整块向下移动到内存绝对地址 0x0000
 ; 在进入保护模式之前, 加载【中断描述符表寄存器 IDTR】, 指令 LLDT SLFT  用于访问 LDTR 寄存器
@@ -16,13 +10,11 @@
 ; 进入32位保护模式, 保护模式是 CPU 提供的一种使用方式,设置适当的参数开启
 ; 跳转到位于 system 模块最前面部分的 head.bin 继续运行
 
-; NOTE; These had better be the same as in bootsect.s!
-; 以下这些参数最好和bootsect.s中的相同！
 #include <linux/config.h>
-; config.h中定义了DEF_INITSEG = 0x9000，DEF_SYSSEG = 0x1000，DEF_SETUPSEG = 0x9020。
-INITSEG  = DEF_INITSEG	; we move boot here - out of the way
-SYSSEG   = DEF_SYSSEG	; system loaded at 0x10000 (65536).
-SETUPSEG = DEF_SETUPSEG	; this is the current segment
+
+INITSEG  = DEF_INITSEG	; 0x9000
+SYSSEG   = DEF_SYSSEG	; system.bin 模块加载到 0x10000
+SETUPSEG = DEF_SETUPSEG	; 0x9020 本程序,即该程序段所在地址
 
 .globl begtext, begdata, begbss, endtext, enddata, endbss
 .text
@@ -36,15 +28,10 @@ begbss:
 entry start
 start:
 
-! ok, the read went well so we get current cursor position and save it for
-! posterity.
-; ok，整个读磁盘过程都正常，现在将光标位置保存以备今后使用。
-
-	mov	ax,#INITSEG		! this is done in bootsect already, but...
-						; 这已经在bootsect程序中设置过ds，但是...
+	mov	ax,#INITSEG
 	mov	ds,ax
 
-;;;;; 1.获取系统初始化所需要的参数 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;; step 01 通过BIOS提供的与硬件交互的能力, 读有需要的硬件参数 ;;;;;;;;;;
 ; 内存地址	 ; 字节 ; 内容				 ;
 ; 0x90000	; 2	;   光标位置			;
 ; 0x90002	; 2	;	扩展内存大小 		 ;
@@ -62,13 +49,13 @@ start:
 ; 0x90090	; 16;	第2个硬盘的参数表	  ;
 ; 0x901FC	; 2 ;	根文件系统所在的设备号（bootsec.s中设置）;
 
-! Get memory size (extended mem, kB) 
+; Get memory size (extended mem, kB)
 ;;; 取从0x100000（1M）处开始的扩展内存大小（KB）
 	mov	ah,#0x88
 	int	0x15
 	mov	[2],ax
 
-! check for EGA/VGA and some config parameters 
+; check for EGA/VGA and some config parameters
 ;;; 检查EGA/VGA和一些配置参数
 	mov	ah,#0x12
 	mov	bl,#0x10
