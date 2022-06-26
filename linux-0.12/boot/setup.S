@@ -74,23 +74,31 @@ start:
 	je	novga
 	call	chsvga
 
+; 使用 BIOS 中断 0x10, 功能号 0x03 取屏幕当前光标位置,并保存在内存 0x90000 处
+; 在之后的应用中, 控制台初始化程序 console.c 会在此处读取该值
+;
 novga:	
-	mov	[14],ax	
-;;; 获取光标位置
-	mov	ah,#0x03	; read cursor pos
+	mov	[14],ax
+	mov	ah,#0x03
 	xor	bh,bh
-	int	0x10		; save it in known place, con_init fetches
-	mov	[0],dx		; it from 0x90000.
+	int	0x10
+	mov	[0],dx		; 光标位置存储到 0x90000.
 	
-! Get video-card data:
-;;; 取显示卡当前显示模式
+;;;; Get video-card data ;;;;
+; 取显示卡当前显示模式
+; 0x90004 存放当前页, 0x90006 存放显示模式, 0x90007 存放字符列数
 	mov	ah,#0x0f
 	int	0x10
-	mov	[4],bx		! bh = display page
-	mov	[6],ax		! al = video mode, ah = window width
+	mov	[4],bx
+	mov	[6],ax
 
-;;; 复制两个硬盘的参数表：
-! Get hd0 data
+;;;; 复制两个硬盘的参数表 ;;;;
+; 第一个硬盘参数的首地址存储在 BIOS 的 0x41 中断向量
+; 第二个硬盘参数的首地址存储在 BIOS 的 0x46 中断向量
+; 复制 ROM BIOS 中有关两个硬盘参数到
+; 0x90080 处存放第一个硬盘表
+; 0x90090 存放在第二个硬盘的表
+; hd0 参数
 	mov	ax,#0x0000
 	mov	ds,ax
 	lds	si,[4*0x41]			; 取中断向量0x41的值，即hd0参数表的地址--ds:si
@@ -101,7 +109,7 @@ novga:
 	rep
 	movsb
 
-! Get hd1 data
+; hd1 参数
 	mov	ax,#0x0000
 	mov	ds,ax
 	lds	si,[4*0x46]			; 取中断向量0x46的值，即hd1参数表的地址--ds:si
@@ -112,15 +120,19 @@ novga:
 	rep
 	movsb
 
-! Check that there IS a hd1 :-)
-;;; 检查系统是否存在第2个硬盘，如果不存在则第2个表清零。
+;;;; 检查系统是否存在第2个硬盘，如果不存在则第2个表清零 ;;;;
+; 0x13 中断, 功能号 0x15
+; 输入 dl = 驱动器号 0x8* 表示硬盘, 0x80是第一个硬盘, 0x81 是第2个硬盘
+; 输出 ah = 类型码, 00- 盘不存在, 01-软驱 没有 change-line 支持, 02-软驱 其他可移动设备 03-硬盘
 
 	mov	ax,#0x01500
 	mov	dl,#0x81
 	int	0x13
 	jc	no_disk1
 	cmp	ah,#3
-	je	is_disk1		; 是硬盘吗?(类型 = 3?).
+	je	is_disk1		; 比较输出的类型码,等于03 表示硬盘
+
+; 不存在第二个硬盘时,对0x90090处清零
 no_disk1:
 	mov	ax,#INITSEG
 	mov	es,ax
@@ -129,11 +141,9 @@ no_disk1:
 	mov	ax,#0x00
 	rep
 	stosb
+
+;
 is_disk1:
-
-! now we want to move to protected mode ...
-; 这里开始，我们将要开始进入保护模式
-
 	cli			! no interrupts allowed !		; 这里开始不允许任何中断
 
 ! first we move the system to it's rightful place
