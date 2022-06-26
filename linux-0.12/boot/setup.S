@@ -1,23 +1,20 @@
 ;	setup.s		(C) 1991 Linus Torvalds
-!
-; setup.s is responsible for getting the system data from the BIOS,
-; and putting them into the appropriate places in system memory.
-; both setup.s and system has been loaded by the bootblock.
-;
+
 ; This code asks the bios for memory/disk/other parameters, and
 ; puts them in a "safe" place: 0x90000-0x901FF, ie where the
 ; boot-block used to be. It is then up to the protected mode
 ; system to read them from there before the area is overwritten
 ; for buffer-blocks.
 ;
-; setup.s 主要功能是加载操作系统可执行程序
-; 利用 BIOS 中断获取系统数据, 并将这些数据保存到0x90000开始的位置,覆盖掉 bootsect.bin 程序所在的地方
+; setup.s 主要功能是加载操作系统可执行程序, 利用 BIOS 提供的与硬件交互的能力,即 BIOS 中断, 并将这些数据保存到0x90000开始的位置,覆盖掉 bootsect.bin 程序所在的地方
 ; 将 system.bin 从 0x10000-0x8ffff 整块向下移动到内存绝对地址 0x0000
-; 加载【中断描述符表寄存器 IDTR】
-; 加载【全局描述符表寄存器 GDTR】
+; 在进入保护模式之前, 加载【中断描述符表寄存器 IDTR】, 指令 LLDT SLFT  用于访问 LDTR 寄存器
+; 在进入保护模式之前, 加载【全局描述符表寄存器 GDTR】, 指令 LGDT SGDT  用于访问 GDTR 寄存器
 ; 开启 A20 地址线
 ; 设置中断控制芯片 8259A, 硬件中断号重新设置为 0x20 - 0x2f
 ; 设置 CPU 控制寄存器( CR0 机器状态字)
+; 进入32位保护模式, 保护模式是 CPU 提供的一种使用方式,设置适当的参数开启
+; 跳转到位于 system 模块最前面部分的 head.bin 继续运行
 
 ; NOTE; These had better be the same as in bootsect.s!
 ; 以下这些参数最好和bootsect.s中的相同！
