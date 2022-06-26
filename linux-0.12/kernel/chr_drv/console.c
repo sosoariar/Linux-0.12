@@ -6,7 +6,7 @@
 
 /*
  *	console.c
- *
+ *  字符设备驱动程序集
  * This module implements the console io functions
  *	'void con_init(void)'
  *	'void con_write(struct tty_queue * queue)'

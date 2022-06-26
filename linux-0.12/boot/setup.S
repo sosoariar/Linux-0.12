@@ -1,31 +1,30 @@
+;	setup.s		(C) 1991 Linus Torvalds
 !
-!	setup.s		(C) 1991 Linus Torvalds
-!
-! setup.s is responsible for getting the system data from the BIOS,
-! and putting them into the appropriate places in system memory.
-! both setup.s and system has been loaded by the bootblock.
-!
-! This code asks the bios for memory/disk/other parameters, and
-! puts them in a "safe" place: 0x90000-0x901FF, ie where the
-! boot-block used to be. It is then up to the protected mode
-! system to read them from there before the area is overwritten
-! for buffer-blocks.
-!
-;  setup.s负责从BIOS中获取系统数据，并将这些数据放到系统内存的适当地方。
-; 此时setup.s和system已经由bootsect引导块加载到内存中。
+; setup.s is responsible for getting the system data from the BIOS,
+; and putting them into the appropriate places in system memory.
+; both setup.s and system has been loaded by the bootblock.
+;
+; This code asks the bios for memory/disk/other parameters, and
+; puts them in a "safe" place: 0x90000-0x901FF, ie where the
+; boot-block used to be. It is then up to the protected mode
+; system to read them from there before the area is overwritten
+; for buffer-blocks.
+;
+; setup.s 主要功能是加载操作系统可执行程序
+; 利用 BIOS 中断获取系统数据, 并将这些数据保存到0x90000开始的位置,覆盖掉 bootsect.bin 程序所在的地方
 ;
 ; 这段代码询问bios有关内存/磁盘/其它参数，并将这些参数放到一个“安全的”地
 ; 方：0x90000 - 0x901FF，也即原来bootsect代码块曾经在的地方，然后在被缓冲
 ; 块覆盖掉之前由保护模式的system读取。
-!
+;
 
-! NOTE! These had better be the same as in bootsect.s!
+; NOTE; These had better be the same as in bootsect.s!
 ; 以下这些参数最好和bootsect.s中的相同！
 #include <linux/config.h>
 ; config.h中定义了DEF_INITSEG = 0x9000，DEF_SYSSEG = 0x1000，DEF_SETUPSEG = 0x9020。
-INITSEG  = DEF_INITSEG	! we move boot here - out of the way
-SYSSEG   = DEF_SYSSEG	! system loaded at 0x10000 (65536).
-SETUPSEG = DEF_SETUPSEG	! this is the current segment
+INITSEG  = DEF_INITSEG	; we move boot here - out of the way
+SYSSEG   = DEF_SYSSEG	; system loaded at 0x10000 (65536).
+SETUPSEG = DEF_SETUPSEG	; this is the current segment
 
 .globl begtext, begdata, begbss, endtext, enddata, endbss
 .text
