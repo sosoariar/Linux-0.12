@@ -144,18 +144,25 @@ no_disk1:
 
 ;;;; 进入保护模式 ;;;;
 is_disk1:
-	cli			! no interrupts allowed !		; 这里开始不允许任何中断
 
-! first we move the system to it's rightful place
-;;;;; 2. 把整个system模块移动到0x00000位置 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; no interrupts allowed 这里开始不允许任何中断
+	cli
 
+;;;;;;;;;;; 把整个system模块移动到0x00000位置 ;;;;;;;;;;;
+; bootsect 引导程序会把 system 模块读入到内存 0x10000(64KB) 起始的位置
+; 当时认为system的大小不会超过, 0x80000(512KB) 即末端不会炒锅内存地址0x90000
+; bootsect 在上面结论的基础上, 把自己移动到 0x90000 开始的地方,并把 setup 加载到它的后面
+; 为了容纳更多的代码, 把system模块移动到0x00000位置
 	mov	ax,#0x0000
 	cld					! 'direction' = 0, movs moves forward
 do_move:
 	mov	es,ax			! destination segment ; es:di是目的地址(初始为0x0:0x0)
+
+	; 判断是否移动完成
 	add	ax,#0x1000
-	cmp	ax,#0x9000		; 已经把最后一段(从0x8000段开始的64KB)代码移动完.
-	jz	end_move 		; 判断是否移动完成
+	cmp	ax,#0x9000
+	jz	end_move
+
 	mov	ds,ax			! source segment
 	sub	di,di
 	sub	si,si
@@ -163,6 +170,7 @@ do_move:
 	rep
 	movsw
 	jmp	do_move
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ! then we load the segment descriptors
 ;;;;; 3. 此后，我们加载段描述符表（临时gdt，ldt表） ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
