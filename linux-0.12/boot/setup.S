@@ -172,88 +172,66 @@ do_move:
 	jmp	do_move
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-! then we load the segment descriptors
-;;;;; 3. 此后，我们加载段描述符表（临时gdt，ldt表） ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;;;;;;;;;; 加载段描述符表(临时gdt ldt表) ;;;;;;;;;;;
+; 进入保护模式之前,需要首先设置好需要使用的段描述符表, 如全局描述符表 GDT 和 中断描述符表 IDT
+;
 end_move:
-	mov	ax,#SETUPSEG	! right, forgot this at first. didn't work :-)
+	mov	ax,#SETUPSEG	; right, forgot this at first. didn't work :-)
 	mov	ds,ax
-	lidt	idt_48		! load idt with 0,0					 ; 加载IDT寄存器
-	lgdt	gdt_48		! load gdt with whatever appropriate ; 加载GDT寄存器
+	lidt	idt_48		; load idt with 0,0					 ; 加载IDT寄存器
+	lgdt	gdt_48		; load gdt with whatever appropriate ; 加载GDT寄存器
 
-! that was painless, now we enable A20
-;;;;; 为了能访问1MB以上的内存，需要开启A20地址线 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-	call	empty_8042
-	mov	al,#0xD1		! command write ; 0xD1 - 写数据到P2口
-	out	#0x64,al 		; 位1用于A20线的选通
-	call	empty_8042
-	mov	al,#0xDF		! A20 on
+;;;;;;;;;;; 为了能访问1MB以上的内存,需要开启A20地址线 ;;;;;;;;;;;
+; 测试 8042 状态寄存器, 等待输入缓冲区空,只有输入缓冲器为空时,才可以对其执行写指令
+	call empty_8042
+	mov al,#0xD1
+	out #0x64,al 		; 位1用于A20线的选通
+	call empty_8042
+	mov al,#0xDF		; A20 on
 	out	#0x60,al
-	call	empty_8042
+	call empty_8042     ; 若此时输入缓冲器为空,则表示A20线已经选通
 
-! well, that went ok, I hope. Now we have to reprogram the interrupts :-(
-! we put them right after the intel-reserved hardware interrupts, at
-! int 0x20-0x2F. There they won't mess up anything. Sadly IBM really
-! messed this up with the original PC, and they haven't been able to
-! rectify it afterwards. Thus the bios puts interrupts at 0x08-0x0f,
-! which is used for the internal hardware interrupts as well. We just
-! have to reprogram the 8259's, and it isn't fun.
-; 希望以上一切正常。现在我们必须重新对中断进行编程 :-(
-; 我们将它们放在正好处于intel保留的硬件中断后面，在int 0x20 - 0x2F。
-; 在那里它们不会引起冲突。不幸的是IBM在原PC机中搞糟了，以后也没有纠正过来。
-; PC机的BIOS将中断放在了0x08-0x0f，这些中断也被用于内部硬件中断。
-; 所以我们就必须重新对8259中断控制器进行编程，这一点都没意思。
-
-;;;;; 以下是重新对8259A芯片进行编程，不是需要理解的重点，不做具体介绍 ;;;;;;;;;;;;;;;;;
-	mov	al,#0x11		! initialization sequence
-	out	#0x20,al		! send it to 8259A-1
-	.word	0x00eb,0x00eb		! jmp $+2, jmp $+2 	; $ 表示当前指令的地址，
-	out	#0xA0,al		! and to 8259A-2
+;;;;;;;;;;; 重新对8259A芯片进行编程, 不是需要理解的重点, 不做具体介绍 ;;;;;;;;;;;
+; 在 Linux0.12 编写时, 使用2个可编程中断控制器 8259A 芯片
+; 8259 芯片主片端口 0x20 - 0x21
+; 8259 从片端口 0xA0 - 0xA1
+;
+	mov	al,#0x11
+	out	#0x20,al                ; 主芯片的端口地址 0x20
+	.word	0x00eb,0x00eb		; jmp $+2, jmp $+2 	; $ 表示当前指令的地址，
+	out	#0xA0,al		        ; and to 8259A-2
 	.word	0x00eb,0x00eb
-	mov	al,#0x20		! start of hardware int's (0x20)
+	mov	al,#0x20		; start of hardware int's (0x20)
 	out	#0x21,al
 	.word	0x00eb,0x00eb
-	mov	al,#0x28		! start of hardware int's 2 (0x28)
+	mov	al,#0x28		; start of hardware int's 2 (0x28)
 	out	#0xA1,al
 	.word	0x00eb,0x00eb
-	mov	al,#0x04		! 8259-1 is master
+	mov	al,#0x04		; 8259-1 is master
 	out	#0x21,al
 	.word	0x00eb,0x00eb
-	mov	al,#0x02		! 8259-2 is slave
+	mov	al,#0x02		; 8259-2 is slave
 	out	#0xA1,al
 	.word	0x00eb,0x00eb
-	mov	al,#0x01		! 8086 mode for both
+	mov	al,#0x01		; 8086 mode for both
 	out	#0x21,al
 	.word	0x00eb,0x00eb
 	out	#0xA1,al
 	.word	0x00eb,0x00eb
-	mov	al,#0xFF		! mask off all interrupts for now
+	mov	al,#0xFF		; mask off all interrupts for now
 	out	#0x21,al
 	.word	0x00eb,0x00eb
 	out	#0xA1,al
 
-! well, that certainly wasn't fun :-(. Hopefully it works, and we don't
-! need no steenking BIOS anyway (except for the initial loading :-).
-! The BIOS-routine wants lots of unnecessary data, and it's less
-! "interesting" anyway. This is how REAL programmers do it.
-!
-! Well, now's the time to actually move into protected mode. To make
-! things as simple as possible, we do no register set-up or anything,
-! we let the gnu-compiled 32-bit programs do that. We just jump to
-! absolute address 0x00000, in 32-bit protected mode.
-; 哼，上面这段当然没劲:-(，希望这样能工作，而且我们也不再需要乏味的BIOS了（除了
-; 初始的加载:-)。BIOS子程序要求很多不必要的数据，而且它一点都没趣。那是“真正”的
-; 程序员所做的事。
 ; 进入保护模式时，我们只需要简单地跳转到绝对地址0x00000处就好。 
-; 这里设置进入32位保护模式运行。首先加载机器状态字(lmsw - Load Machine Status 
-; Word)，也称控制寄存器CR0，将其位0置1将导致CPU工作在保护模式。
+; 这里设置进入32位保护模式运行。首先加载机器状态字(控制寄存器CR0),将其位0置1将导致CPU工作在保护模式。
 ; 注：在Intel公司的手册上建议80386或以上CPU应该使用指令“mov cr0,ax”切换到保护模式。
 
-;;;;; 4. 开启保护模式 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov	ax,#0x0001	! protected mode (PE) bit
-	lmsw	ax		! This is it!				; 将CR0的位0置1开启保护模式
-	jmpi	0,8		! jmp offset 0 of segment 8 (cs)
+;;;;;;;;;;; 开启保护模式 ;;;;;;;;;;;
+	mov	ax,#0x0001	; protected mode (PE) bit
+	lmsw	ax		; 将CR0的位0置1开启保护模式
+	jmpi	0,8
 	; 偏移地址是0，因为system模块已被移动到0x00000处了。
 	; 段值8则是保护模式下的段选择符。
 	; 段选择符长度为16位（2字节）：
@@ -262,22 +240,15 @@ end_move:
 	; 	位3-15	- 描述符表项的索引
 	; 段选择符8(0000,0000,0000,1000)表示请求特权级0、使用全局描述符表gdt中的第1项（该项指出代码
 	; 的基地址是0），因此这里的跳转指令就会去执行system中的代码。
+;;;;;;;;;;; setup程序到这就结束了 ;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;; setup程序到这就结束了 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-! This routine checks that the keyboard command queue is empty
-! No timeout is used - if this hangs there is something wrong with
-! the machine, and we probably couldn't proceed anyway. 				'
+;;;;;;;;;;; 下面这个子程序检查键盘命令队列是否为空,这里不使用超时方法,如果死机,说明pc有问题,我们没有办法再处理下去了 ;;;;;;;;;;;
 empty_8042:
 	.word	0x00eb,0x00eb
-	in	al,#0x64		! 8042 status port		; 读AT键盘控制器状态寄存器
-	test	al,#2		! is input buffer full? ; 测试位1,输入缓冲器满?
-	jnz	empty_8042		! yes - loop
+	in	al,#0x64		; 8042 status port		; 读AT键盘控制器状态寄存器
+	test	al,#2		; is input buffer full? ; 测试位1,输入缓冲器满?
+	jnz	empty_8042		; yes - loop
 	ret
-
-! Routine trying to recognize type of SVGA-board present (if any)
-! and if it recognize one gives the choices of resolution it offers.
-! If one is found the resolution chosen is given by al,ah (rows,cols).
 
 ;;;;; 以下代码牵涉到众多显卡端口信息，比较复杂。但跟内核运行关系不大，所以可以跳过不看 ;;;
 chsvga:	cld
@@ -299,7 +270,7 @@ nokey:
 	mov	ax,#0x5019
 	pop	ds
 	ret
-svga:	lea 	si,idati		! Check ATI 'clues'
+svga:	lea 	si,idati		; Check ATI 'clues'
 	mov	di,#0x31
 	mov 	cx,#0x09
 	repe
@@ -309,7 +280,7 @@ svga:	lea 	si,idati		! Check ATI 'clues'
 	lea	di,moati
 	lea	cx,selmod
 	jmp	cx
-noati:	mov	ax,#0x200f		! Check Ahead 'clues'
+noati:	mov	ax,#0x200f		; Check Ahead 'clues'
 	mov	dx,#0x3ce
 	out	dx,ax
 	inc	dx
@@ -322,7 +293,7 @@ isahed:	lea	si,dscahead
 	lea	di,moahead
 	lea	cx,selmod
 	jmp	cx
-noahed:	mov	dx,#0x3c3		! Check Chips & Tech. 'clues'
+noahed:	mov	dx,#0x3c3		; Check Chips & Tech. 'clues'
 	in	al,dx
 	or	al,#0x10
 	out	dx,al
@@ -339,7 +310,7 @@ noahed:	mov	dx,#0x3c3		! Check Chips & Tech. 'clues'
 	lea	di,mocandt
 	lea	cx,selmod
 	jmp	cx
-nocant:	mov	dx,#0x3d4		! Check Cirrus 'clues'
+nocant:	mov	dx,#0x3d4		; Check Cirrus 'clues'
 	mov	al,#0x0c
 	out	dx,al
 	inc	dx
@@ -385,7 +356,7 @@ rst3d4:	mov	dx,#0x3d4
 	add	ax,#0x0c
 	out	dx,ax
 	ret	
-nocirr:	call	rst3d4			! Check Everex 'clues'
+nocirr:	call	rst3d4			; Check Everex 'clues'
 	mov	ax,#0x7000
 	xor	bx,bx
 	int	0x10
@@ -402,7 +373,7 @@ nocirr:	call	rst3d4			! Check Everex 'clues'
 	jmp	cx
 istrid:	lea	cx,ev2tri
 	jmp	cx
-noevrx:	lea	si,idgenoa		! Check Genoa 'clues'
+noevrx:	lea	si,idgenoa		; Check Genoa 'clues'
 	xor 	ax,ax
 	seg es
 	mov	al,[0x37]
@@ -423,7 +394,7 @@ l1:	inc	si
 	lea	di,mogenoa
 	lea	cx,selmod
 	jmp	cx
-nogen:	lea	si,idparadise		! Check Paradise 'clues'
+nogen:	lea	si,idparadise		; Check Paradise 'clues'
 	mov	di,#0x7d
 	mov	cx,#0x04
 	repe
@@ -433,7 +404,7 @@ nogen:	lea	si,idparadise		! Check Paradise 'clues'
 	lea	di,moparadise
 	lea	cx,selmod
 	jmp	cx
-nopara:	mov	dx,#0x3c4		! Check Trident 'clues'
+nopara:	mov	dx,#0x3c4		; Check Trident 'clues'
 	mov	al,#0x0e
 	out	dx,al
 	inc	dx
@@ -443,12 +414,12 @@ nopara:	mov	dx,#0x3c4		! Check Trident 'clues'
 	out	dx,al
 	in	al,dx
 	xchg	al,ah
-	mov	bl,al		! Strange thing ... in the book this wasn't 				'
-	and	bl,#0x02	! necessary but it worked on my card which
-	jz	setb2		! is a trident. Without it the screen goes
-	and	al,#0xfd	! blurred ...
-	jmp	clrb2		!
-setb2:	or	al,#0x02	!
+	mov	bl,al		; Strange thing ... in the book this wasn't 				'
+	and	bl,#0x02	; necessary but it worked on my card which
+	jz	setb2		; is a trident. Without it the screen goes
+	and	al,#0xfd	; blurred ...
+	jmp	clrb2		;
+setb2:	or	al,#0x02	;
 clrb2:	out	dx,al
 	and	ah,#0x0f
 	cmp	ah,#0x02
@@ -457,8 +428,8 @@ ev2tri:	lea	si,dsctrident
 	lea	di,motrident
 	lea	cx,selmod
 	jmp	cx
-notrid:	mov	dx,#0x3cd		! Check Tseng 'clues'
-	in	al,dx			! Could things be this simple ! :-)
+notrid:	mov	dx,#0x3cd		; Check Tseng 'clues'
+	in	al,dx			; Could things be this simple ; :-)
 	mov	bl,al
 	mov	al,#0x55
 	out	dx,al
@@ -472,7 +443,7 @@ notrid:	mov	dx,#0x3cd		! Check Tseng 'clues'
 	lea	di,motseng
 	lea	cx,selmod
 	jmp	cx
-notsen:	mov	dx,#0x3cc		! Check Video7 'clues'
+notsen:	mov	dx,#0x3cc		; Check Video7 'clues'
 	in	al,dx
 	mov	dx,#0x3b4
 	and	al,#0x01
@@ -535,7 +506,7 @@ tbl:	pop	bx
 	call	prtstr
 	pop	si
 	add	cl,#0x80
-nonum:	in	al,#0x60	! Quick and dirty...
+nonum:	in	al,#0x60	; Quick and dirty...
 	cmp	al,#0x82
 	jb	nonum
 	cmp	al,#0x8b
@@ -559,11 +530,11 @@ nozero:	sub	al,#0x80
 	pop	ds
 	ret
 ; 若都不是上面检测地显示卡，我们就只好采用默认地80*25的标准行列值。
-novid7:	pop	ds	! Here could be code to support standard 80x50,80x30
+novid7:	pop	ds	; Here could be code to support standard 80x50,80x30
 	mov	ax,#0x5019	
 	ret
 
-! Routine that 'tabs' to next col.
+; Routine that 'tabs' to next col.
 
 spcing:	mov	al,#0x2e
 	call	prnt1
@@ -577,7 +548,7 @@ spcing:	mov	al,#0x2e
 	call	prnt1
 	ret	
 
-! Routine to print asciiz-string at DS:SI
+; Routine to print asciiz-string at DS:SI
 
 prtstr:	lodsb
 	and	al,al
@@ -586,8 +557,8 @@ prtstr:	lodsb
 	jmp	prtstr
 fin:	ret
 
-! Routine to print a decimal value on screen, the value to be
-! printed is put in al (i.e 0-255). 
+; Routine to print a decimal value on screen, the value to be
+; printed is put in al (i.e 0-255).
 
 dprnt:	push	ax
 	push	cx
@@ -607,7 +578,7 @@ skip10:	mov	al,ah
 	pop	ax
 	ret
 
-! Part of above routine, this one just prints ascii al
+; Part of above routine, this one just prints ascii al
 
 prnt1:	push	ax
 	push	cx
@@ -619,7 +590,7 @@ prnt1:	push	ax
 	pop	ax
 	ret
 
-! Prints <CR> + <LF>
+; Prints <CR> + <LF>
 
 docr:	push	ax
 	push	cx
@@ -637,30 +608,30 @@ docr:	push	ax
 
 ;;;;; 全局描述符表（临时，每个描述符项长8个字节）
 gdt:
-	.word	0,0,0,0		! dummy	;第1个描述符，不用
+	.word	0,0,0,0		; dummy	;第1个描述符，不用
 
 	; 在GDT表的偏移量是0x08。它是内核代码段选择符的值。
-	.word	0x07FF		! 8Mb - limit=2047 (2048*4096=8Mb)
-	.word	0x0000		! base address=0
-	.word	0x9A00		! code read/exec		; 代码段为只读，可执行
-	.word	0x00C0		! granularity=4096, 386 ; 颗粒度4K，32位
+	.word	0x07FF		; 8Mb - limit=2047 (2048*4096=8Mb)
+	.word	0x0000		; base address=0
+	.word	0x9A00		; code read/exec		; 代码段为只读，可执行
+	.word	0x00C0		; granularity=4096, 386 ; 颗粒度4K，32位
 
-	.word	0x07FF		! 8Mb - limit=2047 (2048*4096=8Mb)
-	.word	0x0000		! base address=0
-	.word	0x9200		! data read/write		; 数据段为可读可写
-	.word	0x00C0		! granularity=4096, 386	; 颗粒度4K，32位
+	.word	0x07FF		; 8Mb - limit=2047 (2048*4096=8Mb)
+	.word	0x0000		; base address=0
+	.word	0x9200		; data read/write		; 数据段为可读可写
+	.word	0x00C0		; granularity=4096, 386	; 颗粒度4K，32位
 
 ; 加载中断描述符表寄存器指令lidt要求的6字节操作数。
 ; 注：CPU要求在进入保护模式之前需设置idt表，因此这里先设置一个长度为0的空表。
 idt_48:
-	.word	0			! idt limit=0	; idt的限长
-	.word	0,0			! idt base=0L	; idt表在线性地址空间中的32位基地址
+	.word	0			; idt limit=0	; idt的限长
+	.word	0,0			; idt base=0L	; idt表在线性地址空间中的32位基地址
 
 ; 加载全局描述符表寄存器指令lgdt要求的6字节操作数。
 gdt_48:
-	.word	0x800		! gdt limit=2048, 256 GDT entries 	
+	.word	0x800		; gdt limit=2048, 256 GDT entries
 						; 表限长2k
-	.word	512+gdt,0x9	! gdt base = 0X9xxxx 
+	.word	512+gdt,0x9	; gdt base = 0X9xxxx
 						; （线性地址空间）基地址：0x90200 + gdt
 
 ;;;;; 以下跟显示卡相关（可以不看） ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -676,7 +647,7 @@ idcandt:	.byte	0xa5
 idgenoa:	.byte	0x77, 0x00, 0x66, 0x99
 idparadise:	.ascii	"VGA="
 
-! Manufacturer:	  Numofmodes:	Mode:
+; Manufacturer:	  Numofmodes:	Mode:
 ; 厂家：			模式数量：		模式列表：
 moati:		.byte	0x02,	0x23, 0x33 
 moahead:	.byte	0x05,	0x22, 0x23, 0x24, 0x2f, 0x34
@@ -689,7 +660,7 @@ motrident:	.byte	0x07,	0x50, 0x51, 0x52, 0x57, 0x58, 0x59, 0x5a
 motseng:	.byte	0x05,	0x26, 0x2a, 0x23, 0x24, 0x22
 movideo7:	.byte	0x06,	0x40, 0x43, 0x44, 0x41, 0x42, 0x45
 
-!			msb = Cols lsb = Rows:
+;			msb = Cols lsb = Rows:
 ;			高字节 = 列数 低字节 = 行数
 dscati:		.word	0x8419, 0x842c
 dscahead:	.word	0x842c, 0x8419, 0x841c, 0xa032, 0x5042
