@@ -49,32 +49,38 @@ start:
 ; 0x90090	; 16;	第2个硬盘的参数表	  ;
 ; 0x901FC	; 2 ;	根文件系统所在的设备号（bootsec.s中设置）;
 
-; Get memory size (extended mem, kB)
-;;; 取从0x100000（1M）处开始的扩展内存大小（KB）
+;;;; 扩展内存大小(KB) ;;;;
+; 0X15 功能号 ah=0x88 取得系统所含扩展内存大小并保存在内存 0x90002 处
 	mov	ah,#0x88
 	int	0x15
 	mov	[2],ax
 
-; check for EGA/VGA and some config parameters
-;;; 检查EGA/VGA和一些配置参数
+;;;; 显示器 EGA/VGA 配置参数 ;;;;
+; 调用 BIOS 中断 ox10 功能号 0x12(视频子系统配置) 取EBA配置信息
+; 返回值对应的数,分别存储
+; bh 显示状态
+; bl 安装的显示内存
+; cx 显示卡特性参数
 	mov	ah,#0x12
 	mov	bl,#0x10
 	int	0x10
 	mov	[8],ax
 	mov	[10],bx
 	mov	[12],cx
-	; 检测屏幕当前行列值。若显示卡是VGA卡，则请求用户选择显示行列值
-	mov	ax,#0x5019  ; 预设行列值(ah = 80列，al = 25行)
+
+; 显示器硬件的行列值
+	mov	ax,#0x5019
 	cmp	bl,#0x10 
 	je	novga
 	call	chsvga
+
 novga:	
 	mov	[14],ax	
 ;;; 获取光标位置
-	mov	ah,#0x03	! read cursor pos
+	mov	ah,#0x03	; read cursor pos
 	xor	bh,bh
-	int	0x10		! save it in known place, con_init fetches
-	mov	[0],dx		! it from 0x90000.
+	int	0x10		; save it in known place, con_init fetches
+	mov	[0],dx		; it from 0x90000.
 	
 ! Get video-card data:
 ;;; 取显示卡当前显示模式
