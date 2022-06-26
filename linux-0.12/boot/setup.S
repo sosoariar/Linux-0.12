@@ -142,7 +142,7 @@ no_disk1:
 	rep
 	stosb
 
-;
+;;;; 进入保护模式 ;;;;
 is_disk1:
 	cli			! no interrupts allowed !		; 这里开始不允许任何中断
 
