@@ -2,15 +2,17 @@
  *  linux/boot/head.s
  *
  *  (C) 1991  Linus Torvalds
+ *
+ *  1. head.s 程序在被编译成目标文件后会与内核其他程序的目标文件一起被连接成 system 模块, 并位于 system 模块的最开始部分,这也就是为什么称其为
+ *  头部程序的原因
+ *  2. 从这里开始, 内核完全都是在保护模式下运行了
+ *  3. 从这里开始, 程序实际上处于内存绝对地址 0 处开始的地方
+ *  4. 对于系统中需要使用的一些中断,内核会在其继续初始化的处理过程中(init/main.c)重新设置这些中断的中断描述项
+ *  5. 初始化中断描述符
+ *  6. 管理内存的分页处理机制
+ *  7. 重新设置了全局段描述符表 GDT
  */
 
-/*
- *  head.s contains the 32-bit startup code.
- *
- * NOTE!!! Startup happens at absolute address 0x00000000, which is also where
- * the page directory will exist. The startup code will be overwritten by
- * the page directory.
- */
 /*
  * head.s含有32位启动代码。
  *
