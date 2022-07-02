@@ -142,23 +142,21 @@ pg3:
 tmp_floppy_area:
     .fill 1024,1,0
 
-/***** 为跳转到init/main.c中的main()函数作准备工作 *****/
+# 如何跳转到 init/main.c
 # 前面3个入栈0值应该分别表示envp，argv指针和argc的值（main()没有用到）
 # pushl $L6    压入返回地址
 # pushl $main  压入main函数的入口地址
 # 当head.s最后执行ret指令时就会弹出main()的地址
 after_page_tables:
-    pushl $0						# These are the parameters to main :-)
-    pushl $0						# 这些是调用main程序的参数(指init/main.c).
-    pushl $0
+    pushl $0						# main 函数参数值 envp
+    pushl $0						# main 函数参数值 argv
+    pushl $0                        # 该参数值 main 函数没有用到
     pushl $L6						# return address for main, if it decides to.
     pushl $main
     jmp setup_paging				# 跳转至setup_paging
+
 L6:
-    jmp L6							# main should never return here, but
-                                    # just in case, we know what happens.
-                                    # main程序绝对不应该返回到这里，不过为了以防万一，所以
-                                    # 添加了该语句。这样我们就知道发生什么问题了。
+    jmp L6							# 死循环,理论上 main 不应该执行到这个位置
 
 /* This is the default interrupt "handler" :-) */
 /* 下面是默认的中断"向量句柄" */
@@ -192,55 +190,26 @@ ignore_int:
 
 /*
  * Setup_paging
- *
- * This routine sets up paging by setting the page bit
- * in cr0. The page tables are set up, identity-mapping
- * the first 16MB. The pager assumes that no illegal
- * addresses are produced (ie >4Mb on a 4Mb machine).
- *
- * NOTE! Although all physical memory should be identity
- * mapped by this routine, only the kernel page functions
- * use the >1Mb addresses directly. All "normal" functions
- * use just the lower 1Mb, or the local data space, which
- * will be mapped to some other place - mm keeps track of
- * that.
- *
- * For those with more memory than 16 Mb - tough luck. I've
- * not got it, why should you :-) The source is here. Change
- * it. (Seriously - it shouldn't be too difficult. Mostly
- * change some constants etc. I left it at 16Mb, as my machine
- * even cannot be extended past that (ok, but it was cheap :-)
- * I've tried to show which constants to change by having
- * some kind of marker at them (search for "16Mb"), but I
- * won't guarantee that's all :-( )
  */
 /*
- * 这个子程序通过设置控制寄存器cr0的标志(PG位31)来启动对内存的分页处理功能，并设置各个页表项
- * 的内容，以恒等映射前16MB的物理内存。分页器假定不会产生非法的地址映射(也即在只有4MB的机器上
- * 设置出大于4MB的内存地址)
- *
- * 注意！尽管所有的物理地址都应该由这个子程序进行恒等映射，但只有内核页面管理函数能直接使用>1MB
- * 的地址。所有"普通"函数仅使用低于1MB的地址空间，或者是使用局部数据空间，该地址空间将被映射到
- * 其他一些地方去--mm(内存管理程序)会管理这些事的.
- *
+ * 控制寄存器 CR0 的标志(PG位31)可以启动【内存的分页处理】
+ * 设置内存各个页表项
  */
- # 上面英文注释第2段的含义是指在机器物理内存中大于1MB的内存空间主要被用于主内存区。主内存区空间
- # 由mm模块管理，它涉及页面映射操作。内核中所有其它函数就是这里指的"普通"函数。
 
 
 # 初始化页目录表前4项和4个页表
 .align 4
 setup_paging:
-    movl $1024 * 5, %ecx				/* 5 pages - pg_dir+4 page tables */
+    movl $1024 * 5, %ecx
     xorl %eax, %eax
-    xorl %edi, %edi						/* pg_dir is at 0x000 */	
+    xorl %edi, %edi
                                         # 页目录从0x0000地址开始
     cld;rep;stosl						# eax内容存到es:edi所指内存位置处,且edi增4.
 
-     # 设置页目录表中的前4个页目录项
-     # 例如第1个页目录项：
-     #      页表所在地址 = 0x00001007 & 0xfffff000 = 0x1000
-     #      页表属性标志 = 0x00001007 & 0x00000fff = 0x07    表示该页存在,用户可读写.
+# 设置页目录表中的前4个页目录项
+# 例如第1个页目录项：
+#      页表所在地址 = 0x00001007 & 0xfffff000 = 0x1000
+#      页表属性标志 = 0x00001007 & 0x00000fff = 0x07
     movl $pg0 + 7, pg_dir				/* set present bit/user r/w */
     movl $pg1 + 7, pg_dir + 4			/*  --------- " " --------- */
     movl $pg2 + 7, pg_dir + 8			/*  --------- " " --------- */
