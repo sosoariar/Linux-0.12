@@ -107,7 +107,6 @@ check_x87:
     ret
 
 /*
- * setup_idt
  * 256个表项,每个表项 8 Byte, 共2KB
  *
  * 如何设置IDT呢？
@@ -131,17 +130,6 @@ rp_sidt:
     jne rp_sidt
     lidt idt_descr				# 加载中断描述符表寄存器值
     ret
-
-/*
- *  setup_gdt
- *
- *  This routines sets up a new gdt and loads it.
- *  Only two entries are currently built, the same
- *  ones that were built in init.s. The routine
- *  is VERY complicated at two whole lines, so this
- *  rather long comment is certainly needed :-).
- *  This routine will beoverwritten by the page tables.
- */
 
 # 加载全局描述符表寄存器(全局描述符表内容已设置好)
 setup_gdt:
