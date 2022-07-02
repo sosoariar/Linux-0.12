@@ -44,44 +44,25 @@ startup_32:
     lss stack_start, %esp
 
 # 下面代码用于测试A20地址线是否已经开启
-# 采用的方法是向内存地址0x000000处写入任意一个数值，然后看内存地址0x100000(1M)处是否也是这个数值。
+# 采用的方法是向内存地址0x000000处写入任意一个数值, 然后看内存地址0x100000(1M)处是否也是这个数值。
 # 如果一直相同的话（表示地址A20线没有选通），就一直比较下去，即死循环。
     xorl %eax, %eax
-1:	incl %eax               # check that A20 really IS enabled
-    movl %eax, 0x000000     # loop forever if it isn't
+1:	incl %eax
+    movl %eax, 0x000000
     cmpl %eax, 0x100000
     je 1b
-/*
- * NOTE! 486 should set bit 16, to check for write-protect in supervisor
- * mode. Then it would be unnecessary with the "verify_area()"-calls.
- * 486 users probably want to set the NE (#5) bit also, so as to use
- * int 16 for math errors.
- */
-/*
- * 注意！在下面这段程序中，486应该将位16置位，以检查在超级用户模式下的写保护，此后"verify_area()"
- * 调用就不需要了。486的用户通常也会想将NE(#5)置位，以便对数学协处理器的出错使用int 16。
- *
- */
- # 上面原注释中提到的486CPU中CR0控制器的位16是写保护标志WP，用于禁止超级用户级的程序向一般用户只读
- # 页面中进行写操作。该标志主要用于操作系统在创建新进程时实现写时复制方法。
 
  # 下面这段程序用于检查数学协处理器芯片是否存在
- # 方法是修改控制寄存器CR0，在假设存在协处理器的情况下执行一个协处理器指令，如果出错的话则说明协处理器
- # 芯片不存在，需要设置CR0中的协处理器仿真位EM(位2)，并复位协处理器存在标志MP(位1)。
+ # 方法是修改控制寄存器CR0, 复位协处理器存在标志MP(位1)。
     movl %cr0, %eax						# check math chip
     andl $0x80000011, %eax				# Save PG,PE,ET
-    /* "orl $0x10020,%eax" here for 486 might be good */
     orl $2, %eax						# set MP
     movl %eax, %cr0
     call check_x87
     jmp after_page_tables
 
 /*
- * We depend on ET to be correct. This checks for 287/387.
- */
-/*
  * 我们依赖于ET标志的正确性来检测287/387存在与否.
- *
  */
 # fninit向协处理器发出初始化命令，它会把协处理器置于一个末受以前操作影响的已和状态，设置其控制字为默认值，
 # 清除状态字和所有浮点栈式寄存器。非等待形式的这条指令(fninit)还会让协处理器终止执行当前正在执行的任何
@@ -92,17 +73,17 @@ startup_32:
 check_x87:
     fninit
     fstsw %ax
-    cmpb $0, %al						# 初始化状态字应该为0,否则说明协处理器不存在
-    je 1f								/* no coprocessor: have to set bits */
+    cmpb $0, %al
+    je 1f
     movl %cr0, %eax
-    xorl $6, %eax						/* reset MP, set EM */
+    xorl $6, %eax
     movl %eax, %cr0
     ret
 
-.align 4 # 按4字节方式对齐内存地址， 为了提高32位CPU访问内存中代码或数据的速度和效率
-    # 两个字节值是80287协处理器指令fsetpm的机器码。其作用是把80287设置为保护模式。
-    # 80387无需该指令，并且将会把该指令看作是空操作
-1:	.byte 0xDB,0xE4		/* fsetpm for 287, ignored by 387 */	# 287协处理器码
+# 按4字节方式对齐内存地址,为了提高32位CPU访问内存中代码或数据的速度和效率
+.align 4
+
+1:	.byte 0xDB,0xE4
     ret
 
 /*
