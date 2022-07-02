@@ -2,6 +2,7 @@
  *  linux/boot/head.s
  *
  *  (C) 1991  Linus Torvalds
+ * 内存页目录和页表设置,中断描述符表 IDT 全局描述符表 GDT
  */
 
 .text
