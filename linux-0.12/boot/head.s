@@ -117,16 +117,10 @@ setup_gdt:
     ret
 
 /*
- * I put the kernel page tables right after the page directory,
- * using 4 of them to span 16 Mb of physical memory. People with
- * more than 16MB will have to expand this.
- */
-/*
- * Linus将内核的内存页表直接放在页目录之后，使用了4个表来寻址16MB的物理内存。如果你有
- * 多于16MB的内存，就需要在这里进行扩充修改。
+ * 内存页表直接放在页目录之后,使用了4个表来寻址16MB的物理内存
+ * 每个页表长为4KB字节(1页内存页面)
  */
 
- # 每个页表长为4KB字节(1页内存页面)
 .org 0x1000		# 从偏移0x1000处开始存放第1个页表
 pg0:
 
@@ -140,14 +134,9 @@ pg2:
 pg3:
 
 .org 0x5000
+
 /*
- * tmp_floppy_area is used by the floppy-driver when DMA cannot
- * reach to a buffer-block. It needs to be aligned, so that it isn't
- * on a 64kB border.
- */
-/*
- * 当DMA不能访问缓冲块时，下面的tmp_floppy_area内存块就可供软盘
- * 驱动程序使用。其地址需要对齐调整，这样就不会跨越64KB边界。
+ * 供软盘数据缓存用
  */
 
 tmp_floppy_area:
