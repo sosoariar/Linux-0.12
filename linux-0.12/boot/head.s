@@ -2,34 +2,26 @@
  *  linux/boot/head.s
  *
  *  (C) 1991  Linus Torvalds
- *
- *  1. head.s 程序在被编译成目标文件后会与内核其他程序的目标文件一起被连接成 system 模块, 并位于 system 模块的最开始部分,这也就是为什么称其为
- *  头部程序的原因
- *  2. 从这里开始, 内核完全都是在保护模式下运行了
- *  3. 从这里开始, 程序实际上处于内存绝对地址 0 处开始的地方
- *  4. 对于系统中需要使用的一些中断,内核会在其继续初始化的处理过程中(init/main.c)重新设置这些中断的中断描述项
- *  5. 初始化中断描述符
- *  6. 管理内存的分页处理机制
- *  7. 重新设置了全局段描述符表 GDT
  */
 
-/*
- * head.s含有32位启动代码。
- *
- * 注意!!! 32位启动代码是从绝对地址0x00000000开始的，这里也同样是保存页目录的地方，因此这里
- * 的启动代码将在之后被页目录覆盖掉。
- *
- */
 .text
 .globl idt, gdt, pg_dir, tmp_floppy_area
-/***** 页目录表（0x00000000）将会存放在这里 *****/
+
+/*
+ * PageDirect 是什么?
+ * 下面起始地址是 0x00000000
+ * 这个程序已经运行在 32位模式下
+ */
 pg_dir:
 
-# head.s主要做了四件事：
-# 1. 将系统堆栈放置在stack_start指向的数据区（之后，该栈就被用作任务0和任务1共同使用的用户栈）
-# 2. 重新加载了新的中断描述符表和全局段描述符表
+# 下列主要完成4件事
+# 1. 系统堆栈的起始位置,指向 stack_start
+# 2. 重新加载 LDT GDT, 当前为空, 由后续程序补充,段限长从8MB到16MB
 # 3. 初始化页目录表和4个内核专属的页表
 # 4. 通过ret跳转到init/main.c中的main运行
+
+# 0x10 现在是一个【选择符】,硬件会通过【选择符】定位到【段描述符】,段描述符中包括了16位段寄存器需要的地址
+# 0x10 含义: 请求特权级0, 全局描述符表, 表中第二项(第一项为空,第二项为数据段)
 .globl startup_32
 startup_32:
     movl $0x10, %eax
@@ -136,7 +128,7 @@ setup_idt:
     lea ignore_int, %edx
     movl $0x00080000, %eax		# 将选择符0x0008置入eax的高16位中
     movw %dx, %ax				/* selector = 0x0008 = cs */
-    movw $0x8E00, %dx			/* interrupt gate - dpl=0, present */	
+    movw $0x8E00, %dx			/* interrupt gate - dpl=0, present */
                                 # 此时edx含有门描述符高4字节的值
 
     lea idt, %edi				# idt是中断描述符表的地址
@@ -329,30 +321,29 @@ setup_paging:
 
 .align 4
 
-# 前2字节是描述符表的限长，后4字节是描述符表在线性地址空间中的32位基地址。
+# 256项8字节中断描述符表
 .word 0
 idt_descr:
-    .word 256 * 8 - 1				# idt contains 256 entries
+    .word 256 * 8 - 1
     .long idt
+.align 4
 
-.align 4    # 这个对齐貌似多余
-
+# 256项8字节全局描述符表
 .word 0
 gdt_descr:
-    .word 256 * 8 - 1				# so does gdt (not that that's any
-    .long gdt						# magic number, but it works for me :^)
+    .word 256 * 8 - 1
+    .long gdt
 
 .align 8
-# 中断描述符表（空表）
-idt:	.fill 256, 8, 0					# idt is uninitialized
 
-# 全局描述符表
-# 前4项分别是空项(不用)、代码段描述符、数据段描述符、系统调用段描述符（没有使用）
-# 同时还预留了252项的空间，用于放置所创建任务的局部描述符(LDT)和对应的任务状态段TSS的描述符
-# (0-nul, 1-cs, 2-ds, 3-syscall, 4-TSS0, 5-LDT0, 6-TSS1, 7-LDT1, 8-TSS2 etc...)
+
+# 中断描述符表填充内容,实际执行内容后续补充
+idt:	.fill 256, 8, 0
+
+# 全局描述符表,实际执行内容后续补充
 gdt:
-    .quad 0x0000000000000000			/* NULL descriptor */
-    .quad 0x00c09a0000000fff			/* 16Mb */		# 0x08，内核代码段，长度16MB
-    .quad 0x00c0920000000fff			/* 16Mb */		# 0x10，内核数据段，长度16MB
-    .quad 0x0000000000000000			/* TEMPORARY - don't use */
-    .fill 252, 8, 0						/* space for LDT's and TSS's etc */
+    .quad 0x0000000000000000			#空项
+    .quad 0x00c09a0000000fff			#内核代码段, 长度16MB
+    .quad 0x00c0920000000fff			#内核数据段, 长度16MB
+    .quad 0x0000000000000000			#系统调用段描述符,没有使用
+    .fill 252, 8, 0						#256-4=252 放置 LDT TSS
