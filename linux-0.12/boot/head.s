@@ -34,19 +34,18 @@ startup_32:
     call setup_idt          # 设置中断描述符表
     call setup_gdt          # 设置全局描述符表
     
-    # 因为修改了gdt（段描述符中的段限长8MB改成了16MB），所以需要重新装载所有的段寄存器。CS代码段寄存器
-    # 已经在setup_gdt中重新加载过了。
-
-    movl $0x10, %eax        # reload all the segment registers
-    mov %ax, %ds            # after changing gdt. CS was already
-    mov %ax, %es            # reloaded in 'setup_gdt'
+# 运行需要的数据都在代码段, 数据段, 栈段中, 设置 IDT,GDT的过程中, DS ES FS GS 的值已经改变了
+# 因此重新装载所有的段寄存器
+    movl $0x10, %eax
+    mov %ax, %ds
+    mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
     lss stack_start, %esp
 
-    # 下面代码用于测试A20地址线是否已经开启
-    # 采用的方法是向内存地址0x000000处写入任意一个数值，然后看内存地址0x100000(1M)处是否也是这个数值。
-    # 如果一直相同的话（表示地址A20线没有选通），就一直比较下去，即死循环。
+# 下面代码用于测试A20地址线是否已经开启
+# 采用的方法是向内存地址0x000000处写入任意一个数值，然后看内存地址0x100000(1M)处是否也是这个数值。
+# 如果一直相同的话（表示地址A20线没有选通），就一直比较下去，即死循环。
     xorl %eax, %eax
 1:	incl %eax               # check that A20 really IS enabled
     movl %eax, 0x000000     # loop forever if it isn't
