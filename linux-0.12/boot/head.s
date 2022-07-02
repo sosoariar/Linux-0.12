@@ -107,29 +107,19 @@ check_x87:
     ret
 
 /*
- *  setup_idt
- *
- *  sets up a idt with 256 entries pointing to
- *  ignore_int, interrupt gates. It then loads
- *  idt. Everything that wants to install itself
- *  in the idt-table may do so themselves. Interrupts
- *  are enabled elsewhere, when we can be relatively
- *  sure everything is ok. This routine will be over-
- *  written by the page tables.
- */
-/*
  * setup_idt
+ * 256个表项,每个表项 8 Byte, 共2KB
  *
- * 将中断描述符表idt设置成具有256个项，并都指向ignore_int中断门。然后加载中断描述符表寄
- * 存器(lidt指令)。真正实用的中断门以后再安装。当我们在其他地方认为一切都正常时再开启中断。
+ * 如何设置IDT呢？
+ * ignore_int 中断门, 功能是在屏幕上打印C字符, 表示该中断项未被使用,或者初始化
+ * 取 ignore_int 的地址到edx,
  */
 
 setup_idt:
-    lea ignore_int, %edx
-    movl $0x00080000, %eax		# 将选择符0x0008置入eax的高16位中
-    movw %dx, %ax				/* selector = 0x0008 = cs */
-    movw $0x8E00, %dx			/* interrupt gate - dpl=0, present */
-                                # 此时edx含有门描述符高4字节的值
+    lea ignore_int, %edx        # lea 指令取有效偏移地址到 edx 寄存器中
+    movl $0x00080000, %eax
+    movw %dx,%ax
+    movw $0x8E00, %dx
 
     lea idt, %edi				# idt是中断描述符表的地址
     mov $256, %ecx
