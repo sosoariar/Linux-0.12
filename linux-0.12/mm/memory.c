@@ -667,8 +667,7 @@ void do_no_page(unsigned long error_code, unsigned long address)
 
 /**
  * 物理内存管理初始化
- * 该函数对1MB以上内存区域以页面为单位进行管理前的初始化设置工作，一个页面长度为4KB，并使用一个页
- * 面映射字节数组mem_map[]来管理所有这些页面。
+ * 实地址 1MB 以上内存区域是如何管理的？
  * @param[in]	start_mem	主内存区的开始地址
  * @param[in]	end_mem		主内存区的结束地址
  * @return		void

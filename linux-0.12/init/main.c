@@ -114,21 +114,25 @@ struct drive_info { char dummy[32]; } drive_info;
 
 /*
  * 内核初始化主程序
- * 此时中断还被禁止的，做完必要的设置后就将其开启。
+ * 此时中断还被禁止的,做完必要的设置后就将其开启。
  */
 int main(void){
 
-	ROOT_DEV = ORIG_ROOT_DEV;
-	SWAP_DEV = ORIG_SWAP_DEV;
+	ROOT_DEV = ORIG_ROOT_DEV;                   // 保存根文件系统设备号
+	SWAP_DEV = ORIG_SWAP_DEV;                   // 保存交换文件设备号
 	sprintf(term, "TERM=con%dx%d", CON_COLS, CON_ROWS);
 	envp[1] = term;
 	envp_rc[1] = term;
 	drive_info = DRIVE_INFO;
 
-	/* 根据机器物理内存容量设置高速缓冲区和主内存区的起始地址 */
-	memory_end = (1 << 20) + (EXT_MEM_K << 10); /* 1M + 扩展内存大小 */
-	memory_end &= 0xfffff000;					/* 忽略不到4K(1页)的内存 */
-	if (memory_end > 16 * 1024 * 1024) {		/* 最多管理16M内存 */
+	/*
+	 * 机器物理内存容量 memory_end
+	 * 设置高速缓冲区  buffer_memory_end
+	 * 设置主内存区的起始地址 main_memory_start
+	 */
+	memory_end = (1 << 20) + (EXT_MEM_K << 10);
+	memory_end &= 0xfffff000;
+	if (memory_end > 16 * 1024 * 1024) {
 		memory_end = 16 * 1024 * 1024;
 	}
 
@@ -140,12 +144,14 @@ int main(void){
 		buffer_memory_end = 1 * 1024 * 1024;
 	}
 	main_memory_start = buffer_memory_end;
-#ifdef RAMDISK	/* 如果定义了虚拟盘，则主内存还得相应减少 */
+
+// 如果在 Makefile 中定义了内存虚拟盘符号,则需要初始化虚拟盘
+#ifdef RAMDISK
 	main_memory_start += rd_init(main_memory_start, RAMDISK*1024);
 #endif
 
 /* 以下是内核进行所有方面的初始化工作 */
-	mem_init(main_memory_start, memory_end);/* 主内存区初始化 */
+	mem_init(main_memory_start, memory_end);            /* 主内存区初始化 */
 	trap_init();							/* 陷阱门初始化 */
 	blk_dev_init();							/* 块设备初始化 */
 	chr_dev_init();							/* 字符设备初始化 */
