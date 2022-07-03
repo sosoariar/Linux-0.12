@@ -21,30 +21,26 @@ _syscall0(int, sync)                        // 系统调用：更新文件系统
 #include <linux/head.h>                     // 段描述符简单结构
 #include <asm/system.h>                     // 设置或修改描述符
 #include <asm/io.h>                         // IO端口操作
-
 #include <stddef.h>                         //
 #include <stdarg.h>                         // 定义变量参数列表
 #include <unistd.h>
 #include <fcntl.h>                          // 用于文件及其描述符的操作控制常数符号的定义
 #include <sys/types.h>                      // 类型头文件,定义了基本的系统数据类型
-
 #include <linux/fs.h>                       // 定义文件表结构
-
 #include <string.h>                         // 定义有关内存或字符串操作的嵌入函数
-
 #include <linux/log_print.h> 	            // 打印日志文件
 
-static char printbuf[1024];		/* 静态字符串数组，用作内核显示信息的缓存。*/
+static char printbuf[1024];		            /* 静态字符串数组,用作内核显示信息的缓存。*/
 
 extern char *strcpy();
 extern int vsprintf();
-extern void init(void);							/* 初始化 */
-extern void blk_dev_init(void);					/* 块设备初始化blk_drv/ll_re_blk.c */
-extern void chr_dev_init(void);					/* 字符设备初始化chr_drv/tty_io.c */
-extern void hd_init(void);						/* 硬盘初始化blk_drv/hd.c */
-extern void floppy_init(void);					/* 软驱初始化blk_drv/floppy.c */
-extern void mem_init(long start, long end);		/* 内存管理初始化mm/memory.c */
-extern long rd_init(long mem_start, int length);/* 虚拟盘初始化blk_drv/ramdisk.c */
+extern void init(void);
+extern void blk_dev_init(void);					/* 块设备初始化    blk_drv/ll_re_blk.c */
+extern void chr_dev_init(void);					/* 字符设备初始化  chr_drv/tty_io.c */
+extern void hd_init(void);						/* 硬盘初始化      blk_drv/hd.c */
+extern void floppy_init(void);					/* 软驱初始化      blk_drv/floppy.c */
+extern void mem_init(long start, long end);		/* 内存管理初始化  mm/memory.c */
+extern long rd_init(long mem_start, int length);/* 虚拟盘初始化    blk_drv/ramdisk.c */
 extern long kernel_mktime(struct tm * tm);		/* 计算系统开机启动时间(秒) */
 
 /* 内核专用sprintf()函数，产生格式化信息并输出到指定缓冲区str中 */
