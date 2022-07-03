@@ -1,7 +1,8 @@
 /*
  *  linux/init/main.c
- *
  *  (C) 1991  Linus Torvalds
+ *
+ *
  */
 
 #define __LIBRARY__  // 与内联汇编有关
