@@ -2,13 +2,11 @@
  *  linux/kernel/sched.c
  *
  *  (C) 1991  Linus Torvalds
- */
-
-/*
- * 'sched.c' is the main kernel file. It contains scheduling primitives
- * (sleep_on, wakeup, schedule etc) as well as a number of simple system
- * call functions (type getpid(), which just extracts a field from
- * current-task
+ *
+ *  【任务】和【进程】在Linux源代码中是同一概念
+ *  选择下一个要执行的进程
+ *  对所有任务进程检测,唤醒任何一个已经得到信号的进程
+ *  针对进程数组中的每一个任务,检查报警定时值 alarm, 如果进程的 alarm 时间已经过期(alarm<jiffies),则在它的信号位置中设置 SIGALRM 信号
  */
 
 /*
