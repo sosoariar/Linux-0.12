@@ -31,39 +31,11 @@
  *
  */
 
-#define __LIBRARY__ /* 为了包括定义在 unistd.h 中的内嵌汇编代码等信息 */
-#include <unistd.h>
+#define __LIBRARY__  // 与内联汇编有关
+#include <unistd.h>  //
 #include <time.h>
 
-/*
- * we need this inline - forking from kernel space will result
- * in NO COPY ON WRITE (!!!), until an execve is executed. This
- * is no problem, but for the stack. This is handled by not letting
- * main() use the stack at all after fork(). Thus, no function
- * calls - which means inline code for fork too, as otherwise we
- * would use the stack upon exit from 'fork()'.
- *
- * Actually only pause and fork are needed inline, so that there
- * won't be any messing with the stack from main(), but we define
- * some others too.
- */
-
-/*
- * 我们需要下面这些内嵌语句 - 从内核空间创建进程将导致没有写时复制(COPY ON WRITE)!!!直到执行一
- * 个execve调用。这对堆栈可能带来问题。处理方法是在fork()调用后不让main()使用任何堆栈。因此就不
- * 能有函数调用 - 这意味着fork也要使用内嵌代码，否则我们在从fork()退出时就要使用堆栈了。
- *
- * 实际上只有pause和fork需要使用内嵌方式，以保证从main()中不会弄乱堆栈，但是我们同时还定义了其
- * 他一些函数。
- */
-
-/* Linux在内核空间创建进程时不使用写时复制技术(Copy on write)。main()在移动到用户模式(到任务0)
- 后执行内嵌方式的 fork() 和 pause()，因此可保证不使用任务0的用户栈。在执行move_to_user_mode()之
- 后，本程序 main() 就以任务0的身份在运行了。而任务0是所有将创建子进程的父进程。当它创建一个子进
- 程时(init进程)，由于任务1代码属于内核空间，因此没有使用写时复制功能。此时任务0的用户栈就是任务
- 1的用户栈，即它们共同使用一个栈空间。因此希望在 main.c 运行在任务0的环境下时不要有对堆栈的任何
- 操作，以免弄乱堆栈。而在再次执行fork() 并执行过 execve() 函数后，被加载程序已不属于内核空间，
- 因此可以使用写时复制技术了。*/
+/* 堆栈 内核空间 写时复制技术了。*/
 
 // int fork() 系统调用：创建进程
 _syscall0(int, fork)
