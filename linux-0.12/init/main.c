@@ -163,29 +163,16 @@ int main(void){
 	floppy_init();							/* 软驱初始化 */
 
 	sti();									/* 开启中断 */
-	move_to_user_mode();
-	if (!fork()) {							/* we count on this going ok */
-		/* 创建任务1（init进程） */
-		init();
+	move_to_user_mode();                    // 切换到用户模式
+	if (!fork()) {
+		init();                             // 在新建子进程中执行
 	}
-/*
- *   NOTE!!   For any other task 'pause()' would mean we have to get a
- * signal to awaken, but task0 is the sole exception (see 'schedule()')
- * as task 0 gets activated at every idle moment (when no other tasks
- * can run). For task0 'pause()' just means we go check if some other
- * task can run, and if not we return here.
- */
-/*
- * 注意!! 对于任何其他的任务，“pause()”将意味着我们必须等待收到信号才会返回就绪态，但任务0
- * 是唯一例外的情况(参见“schedule()”)，因为任务0在任何空闲时间里都会被激活，因此对于任务
- * 0 “pause()”仅意味着我们返回来查看是否有其他任务可以运行，如果没有的话，我们就在这里一直循
- * 环执行。
- */
 
 	/* 调度函数发现系统中没有其他程序可以运行就会切换到任务0 */
 	for(;;) {
 		__asm__("int $0x80"::"a" (__NR_pause));
 	}
+
 }
 
 
