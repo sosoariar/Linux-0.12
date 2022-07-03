@@ -5,7 +5,7 @@
  *
  */
 
-#define __LIBRARY__  // 与内联汇编有关
+#define __LIBRARY__  // 与内联汇编有关,如何与有关文件关联起来?
 #include <unistd.h>  //
 #include <time.h>
 
@@ -17,22 +17,22 @@ _syscall1(int, setup, void *, BIOS)         // 系统调用：仅用于linux初�
 _syscall0(int, sync)                        // 系统调用：更新文件系统
 
 #include <linux/tty.h>                      // 串行通信
-#include <linux/sched.h>
-#include <linux/head.h>
-#include <asm/system.h>
-#include <asm/io.h>
+#include <linux/sched.h>                    // 进程调度
+#include <linux/head.h>                     // 段描述符简单结构
+#include <asm/system.h>                     // 设置或修改描述符
+#include <asm/io.h>                         // IO端口操作
 
-#include <stddef.h>
-#include <stdarg.h>
+#include <stddef.h>                         //
+#include <stdarg.h>                         // 定义变量参数列表
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
+#include <fcntl.h>                          // 用于文件及其描述符的操作控制常数符号的定义
+#include <sys/types.h>                      // 类型头文件,定义了基本的系统数据类型
 
-#include <linux/fs.h>
+#include <linux/fs.h>                       // 定义文件表结构
 
-#include <string.h>
+#include <string.h>                         // 定义有关内存或字符串操作的嵌入函数
 
-#include <linux/log_print.h> 	/* 日志打印功能 */
+#include <linux/log_print.h> 	            // 打印日志文件
 
 static char printbuf[1024];		/* 静态字符串数组，用作内核显示信息的缓存。*/
 
