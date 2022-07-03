@@ -11,15 +11,12 @@
 
 /* 堆栈 内核空间 写时复制技术了。*/
 
-_syscall0(int, fork)
-// int pause() 系统调用：暂停进程的执行，直到收到一个信号
-_syscall0(int, pause)
-// int setup(void * BIOS) 系统调用：仅用于linux初始化(仅在这个程序中被调用)
-_syscall1(int, setup, void *, BIOS)
-// int sync() 系统调用：更新文件系统
-_syscall0(int, sync)
+_syscall0(int, fork)                        // 创建一个进程
+_syscall0(int, pause)                       // 暂停进程的执行，直到收到一个信号
+_syscall1(int, setup, void *, BIOS)         // 系统调用：仅用于linux初始化(仅在这个程序中被调用)
+_syscall0(int, sync)                        // 系统调用：更新文件系统
 
-#include <linux/tty.h>
+#include <linux/tty.h>                      // 串行通信
 #include <linux/sched.h>
 #include <linux/head.h>
 #include <asm/system.h>
