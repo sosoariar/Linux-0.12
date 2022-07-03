@@ -43,7 +43,7 @@ extern void mem_init(long start, long end);		/* 内存管理初始化  mm/memory
 extern long rd_init(long mem_start, int length);/* 虚拟盘初始化    blk_drv/ramdisk.c */
 extern long kernel_mktime(struct tm * tm);		/* 计算系统开机启动时间(秒) */
 
-/* 内核专用sprintf()函数，产生格式化信息并输出到指定缓冲区str中 */
+/* 产生格式化信息并输出到指定缓冲区str中 */
 static int sprintf(char * str, const char *fmt, ...)
 {
 	va_list args;
@@ -55,12 +55,7 @@ static int sprintf(char * str, const char *fmt, ...)
 	return i;
 }
 
-/*
- * This is set up by the setup-routine at boot-time
- */
-/* 
- * 这些数据由内核引导期间的setup.s程序设置。
- */
+// 变量可以获得指定内存位置的内容
 #define EXT_MEM_K (*(unsigned short *)0x90002)			/* 1MB以后的扩展内存大小(KB) */
 #define CON_ROWS ((*(unsigned short *)0x9000e) & 0xff)	/* 选定的控制台屏幕的行数 */
 #define CON_COLS (((*(unsigned short *)0x9000e) & 0xff00) >> 8)	/* ...列数 */
@@ -68,13 +63,7 @@ static int sprintf(char * str, const char *fmt, ...)
 #define ORIG_ROOT_DEV (*(unsigned short *)0x901FC)		/* 根文件系统所在设备号 */
 #define ORIG_SWAP_DEV (*(unsigned short *)0x901FA)		/* 交换文件所在设备号 */
 
-/*
- * Yeah, yeah, it's ugly, but I cannot find how to do this correctly
- * and this seems to work. I anybody has more info on the real-time
- * clock I'd be interested. Most of this was trial and error, and some
- * bios-listing reading. Urghh.
- */
-/* 这段宏读取CMOS实时时钟数据。outb_p和inb_p是include/asm/io.h中定义的端口输入输出宏 */
+/* 读取CMOS实时时钟数据。outb_p和inb_p是include/asm/io.h中定义的端口输入输出宏 */
 #define CMOS_READ(addr) ({		\
 	outb_p(0x80 | addr, 0x70);	\
 	inb_p(0x71); 				\
@@ -83,8 +72,7 @@ static int sprintf(char * str, const char *fmt, ...)
 /* 将BCD码转换成二进制数值 */
 #define BCD_TO_BIN(val)	((val)=((val)&15) + ((val)>>4)*10)
 
-/* CMOS的访问时间很慢。为了减小时间误差，在读取了下面循环中所有数值后，若此时CMOS中秒值
- 发生了变化，则重新读取。这样能控制误差在1s内 */
+// 取 CMOS 实时钟信息作为开机时间,保存到全局变量 startup_time
 static void time_init(void)
 {
 	struct tm time;
@@ -103,8 +91,8 @@ static void time_init(void)
 	BCD_TO_BIN(time.tm_mday);
 	BCD_TO_BIN(time.tm_mon);
 	BCD_TO_BIN(time.tm_year);
-	time.tm_mon--;						/* ti_mon中的月份范围是 0 ~ 11 */
-	startup_time = kernel_mktime(&time);/* 计算开机时间。*/
+	time.tm_mon--;
+	startup_time = kernel_mktime(&time);
 }
 
 static long memory_end = 0;				/* 机器所具有的物理内存容量 */
@@ -124,17 +112,12 @@ static char * envp[] = { "HOME=/usr/root", NULL, NULL };
 /* 用于存放硬盘参数表 */
 struct drive_info { char dummy[32]; } drive_info;
 
-/* 内核初始化主程序 （void -> int 去除编译警告，实际为void） */
-int main(void)		/* This really is void, no error here. */
-					/* 这里真的是 void，没有问题 */
-{					/* The startup routine assumes (well, ...) this */
-					/* 因为在 head.s 就是这么假设的(把 main 的地址压入堆栈的时候) */
 /*
- * Interrupts are still disabled. Do necessary setups, then enable them
- */
-/*
+ * 内核初始化主程序
  * 此时中断还被禁止的，做完必要的设置后就将其开启。
  */
+int main(void){
+
 	ROOT_DEV = ORIG_ROOT_DEV;
 	SWAP_DEV = ORIG_SWAP_DEV;
 	sprintf(term, "TERM=con%dx%d", CON_COLS, CON_ROWS);
