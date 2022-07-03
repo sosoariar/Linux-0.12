@@ -1,15 +1,9 @@
 /*
  *  linux/kernel/asm.s
- *
  *  (C) 1991  Linus Torvalds
+ *  CPU探测到的异常故障处理的底层代码
  */
 
-/*
- * asm.s contains the low-level code for most hardware faults.
- * page_exception is handled by the mm, so that isn't here. This
- * file also handles (hopefully) fpu-exceptions due to TS-bit, as
- * the fpu must be properly saved/resored. This hasn't been tested.
- */
 
 .globl divide_error, debug, nmi, int3, overflow, bounds, invalid_op
 .globl double_fault, coprocessor_segment_overrun

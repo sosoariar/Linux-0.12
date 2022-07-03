@@ -187,17 +187,14 @@ int printf(const char *fmt, ...)
 	return i;
 }
 
-/* init()函数主要完成4件事：
- *		1. 安装根文件系统
- *		2. 显示系统信息
- *		3. 运行系统初始资源配置文件rc中的命令
- *		4. 执行用户登录shell程序
+/*
+ *	如何对shell环境初始化,并执行shell程序
 */
 void init(void)
 {
 	int pid, i;
 
-	setup((void *) &drive_info);
+	setup((void *) &drive_info);    // 分区表信息,加载虚拟盘,安装根文件系统设备 kernel/blk_drv/hd.c
 
 	(void) open("/dev/tty1", O_RDWR, 0);	/* stdin */
 	(void) dup(0);							/* stdout */
@@ -206,9 +203,11 @@ void init(void)
 	printf("%d buffers = %d bytes buffer space\n\r", NR_BUFFERS, NR_BUFFERS * BLOCK_SIZE);
 	printf("Free mem: %d bytes\n\r", memory_end - main_memory_start);
 
-	/* fork出任务2 */
+	/*
+	 * task2 即fork出的新进程
+	 * 为什么 stdin 重定向到 /etc/rc 文件
+	 */
 	if (!(pid = fork())) {
-		/* 将stdin重定向到/etc/rc文件，shell程序会在运行完/etc/rc中设置的命令后退出 */
 		close(0);
 		if (open("/etc/rc", O_RDONLY, 0)) {
 			_exit(1);
@@ -217,7 +216,7 @@ void init(void)
 		_exit(2);
 	}
 
-	if (pid > 0) {	/* init进程等待任务2退出 */
+	if (pid > 0) {
 		while (pid != wait(&i)) {
 			/* nothing */;
 		}
